@@ -4,73 +4,54 @@
 [![Django](https://img.shields.io/badge/django-5.2-green.svg)](https://www.djangoproject.com/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Mahi is a checkpoint-driven, localized event management system designed for seamless participant check-ins, custom pathway enforcement, and flexible runtime data gathering. 
+Mahi is a checkpoint-driven, localized event management system designed for participant check-ins, custom path configuration, and dynamic data collection. 
 
-Engineered with portability and offline-first environments in mind, Mahi allows organizers to easily deploy a complete check-in infrastructure on a local laptop or desktop. Field operators can then securely connect to the central dashboard and perform data validation or input from their own mobile devices or PCs over a local area network (LAN/Wi-Fi), eliminating the need for constant cloud connectivity or complex infrastructure.
-
----
-
-## Key Features
-
-- **Offline-First & LAN Ready:** Easily bind to local network addresses (`0.0.0.0`) to let remote operators on the same network access the application via tablets, smartphones, or laptops.
-- **Checkpoint-Driven Workflow:** Define dynamic paths and checkpoints that participants follow. Control sequential routing and check-in duplication settings per path or checkpoint.
-- **Granular Data Isolation & Permissions:** Define custom data schemas per event (e.g., text, numeric, date, and boolean fields) and map them to individual checkpoints with read/write/fill permissions. Keep sensitive participant data private by only exposing fields to authorized operators at designated checkpoints.
-- **Advanced Dynamic Resolution:** Automatically resolve data attributes from multiple sources, including global participant metadata, event-specific registration metadata, default values, or operator-entered check-in data.
-- **Robust Import System:** Load participant directories directly from Excel/CSV spreadsheets using pandas. Features custom field mapping, duplicate detection, and automated validation.
-- **Full History & Safe Deletion:** Built-in soft deletes (via `django-safedelete`) and auditing mechanisms (via `django-simple-history`) ensure that no operational data is lost and all modifications are tracked.
-- **Persian Calendar & Localization Support:** Preconfigured with Farsi locale, Tehran timezone, and Jalali calendar date pickers using `jdatetime` and `jalali_core`.
+Engineered with portability and offline-first environments in mind, Mahi is optimized to run locally on a host laptop or desktop. Field operators can connect to the central application and perform check-ins or data entry from their mobile devices or PCs over a local area network (LAN/Wi-Fi), eliminating the need for constant cloud connectivity.
 
 ---
 
-## Core Entities & Architecture
+## Core Architecture & Execution Flow
 
-The workflow of Mahi is modeled around the following core database components:
+Mahi models event workflows around a set of distinct database components and services:
 
-### 1. Events
-The root operational entity representing a distinct gathering, session, or tournament. An event maintains its own state (active/inactive), start/stop timestamps, and registers its own set of participants and data schemas.
+### 1. Events, Paths, & Checkpoints
+- **Events:** Root entities representing operational sessions that gather participant lists and associated schemas.
+- **Paths:** User-defined workflows detailing how participants proceed. Configured with flags like `enforce_checkpoint_order` (restricting access to checkpoints out of order) and `allow_duplicate_checkin`.
+- **Checkpoints:** Distinct stations managed by specific operator accounts. They contain Latitude/Longitude coordinates for location-tagging and specify schema permissions.
 
-### 2. Paths
-Workflows defined within an event. A path determines the sequence of checkpoints a participant should traverse.
-- **Enforced Checkpoint Order:** When enabled, prevents a participant from checking in at a checkpoint if they haven't successfully checked in at preceding mandatory checkpoints.
-- **Duplicate Prevention:** Configurable flags to reject or permit multiple check-ins along the same path.
+### 2. Workflow Validation (`CheckInValidationService`)
+- Enforces pathway logic at runtime. If sequence order is enabled, it prevents checking in at a checkpoint if mandatory preceding checkpoints are incomplete.
+- Screens check-ins to prevent unauthorized duplicates unless explicit bypasses are configured at the path or checkpoint levels.
 
-### 3. Checkpoints
-Distinct physical or logical stations managed by designated operator accounts. 
-- Assigned to a specific path and ordered sequentially.
-- Can be optionally marked as **mandatory** for path completion.
-- Supports coordinates (Latitude/Longitude) to log operator locations.
+### 3. Access-Controlled Data Schemas (`EventSchema` & `CheckpointSchema`)
+- Organizers define data fields of various types (text, numbers, dates, boolean flags).
+- Fields are mapped to specific checkpoints with granular capabilities:
+  - `can_view`: Restricts visibility of existing field data to designated operators.
+  - `can_edit`: Governs whether existing values can be overwritten at that station.
+  - `can_fill`: Flags fields that operators are prompted to input during the check-in transaction.
+- **Dynamic Field Resolution:** Resolves values dynamically from default settings, global participant profiles, event-specific registration metadata, or operator inputs.
 
-### 4. Event Schemas & Checkpoint Schemas
-Allows defining arbitrary database schemas at runtime:
-- Supports text, numeric, date, and boolean field types.
-- Checkpoint schemas bind specific fields to checkpoints, assigning granular access:
-  - `can_view`: Determines if the operator can see the current value of the field.
-  - `can_edit`: Allows editing of existing values.
-  - `can_fill`: Prompts the operator to fill out the value during check-in.
-
-### 5. Participant Directory (People)
-The core pool of participants. Includes default attributes (first name, last name, phone number, birth date) alongside a dynamic `metadata` JSON field for arbitrary, indexable custom tags.
-
-### 6. Check-ins & Check-in Data
-Logs participant check-in events at checkpoints, validating path sequence logic and capturing schema-specific data slices at the moment of entry. All data modifications are fully version-controlled.
+### 4. Participant Imports (`PersonImportService`)
+- Handles spreadsheet uploads using `pandas`.
+- Performs character length validations, maps headers to internal fields, and serializes extra spreadsheet columns into unstructured, indexable JSON metadata.
 
 ---
 
-## Technical Stack
+## Technical Stack & Frontend Rendering
 
-- **Framework:** [Django 5.2](https://docs.djangoproject.com/en/5.2/)
-- **Data Wrangling:** [pandas](https://pandas.pydata.org/), [numpy](https://numpy.org/) (for spreadsheet processing)
-- **Localization:** [jdatetime](https://github.com/khaledalhariri/jdatetime), [jalali_core](https://github.com/a-m-d/django-jalali-date)
-- **Data Integrity:** [django-safedelete](https://github.com/makinacorpus/django-safedelete), [django-simple-history](https://github.com/jazzband/django-simple-history)
-- **Database:** SQLite (default/development) or PostgreSQL (production-ready via `psycopg3` and `dj-database-url`)
+### Backend
+- **Core Framework:** Django 5.2 (using Python 3.10+)
+- **Database Layer:** Configurable via `dj-database-url`. Supports SQLite for local dev and PostgreSQL for production.
+- **Data Integrity:** Soft deletes (`django-safedelete`) and complete historical audit logs (`django-simple-history`) are implemented globally.
+
+### Frontend & Rendering
+- **Interface Stack:** HTML, CSS, JavaScript, Alpine.js, and HTMX.
+- **Real-Time Dynamic Rendering:** Templates leverage **Server-Sent Events (SSE)** to stream real-time updates directly to the operator interface without full page reloads.
+- **Responsiveness:** Designed with a fluid layout using clamp typographies, flexible layouts, and touch-target adjustments to be fully responsive and optimized for mobile devices and tablets.
 
 ---
 
 ## Getting Started
-
-### Prerequisites
-- Python 3.10+
-- pip
 
 ### Installation
 
@@ -94,65 +75,35 @@ Logs participant check-in events at checkpoints, validating path sequence logic 
    pip install -r requirements.txt
    ```
 
-4. **Environment Variables:**
+4. **Environment Configuration:**
    Create a `.env` file in the root directory:
    ```ini
    SECRET_KEY=your-django-secret-key
    DEBUG=True
    ALLOWED_HOSTS=localhost,127.0.0.1,192.168.1.100
    SERVER_ADDRESS=http://192.168.1.100:8000
-   # DATABASE_URL=postgres://user:password@localhost:5432/dbname
    ```
-   *Replace `192.168.1.100` with the local IP address of your host laptop/PC to expose the application to other devices on your local Wi-Fi or LAN.*
+   *Note: Set your host laptop's local IP address (e.g., `192.168.1.100`) to let other operators access the application over Wi-Fi.*
 
-5. **Initialize the Database:**
+5. **Initialize Database:**
    ```bash
    python manage.py migrate
    python manage.py createsuperuser
    ```
 
-### Running on a Local Network (LAN)
+### Local Network Deployment
 
-To run the application and allow other devices (mobiles/tablets) to connect to your host:
+Run the server bound to all network interfaces to allow local LAN access:
 ```bash
 python manage.py runserver 0.0.0.0:8000
 ```
-Then, operators can access the app by navigating to `http://<YOUR_LAPTOP_IP>:8000` on their devices.
-
----
-
-## Code Quality & Contributions
-
-This project enforces strict standards to maintain codebase predictability and clean architecture. When making contributions, please keep the following guidelines in mind (as detailed in [CODE_STYLE.md](CODE_STYLE.md)):
-
-- **Type Hints:** All parameter types and return types must be fully declared for all service functions and views. Avoid using `Any` where concrete models or `TypedDict` can be used.
-- **Import Ordering:** Maintain consistent import blocks:
-  1. Standard Library
-  2. Django
-  3. Third-party packages
-  4. Local applications
-- **Views & Services Separation:** Keep business logic, verification routines, and persistence-heavy tasks in **Services** (e.g., `CheckInWorkflowService`). Keep **Views** focused purely on request parsing, form-binding, and response dispatching.
-
----
-
-## Project Structure
-
-```text
-├── mahi/                # Project configuration (settings, URLs, WSGI)
-├── core/                # Shared utilities, base templates, and static assets
-├── accounts/            # User authentication, roles, and global settings
-├── events/              # Event, Path, Checkpoint, and Schema models & views
-├── people/              # Participant profiles, bulk import, and filtering services
-├── operations/          # Real-time check-in logging, workflow services, and dashboard
-├── manage.py            # Django management CLI
-└── requirements.txt     # Python dependencies
-```
+Operators can access the application by navigating to `http://<YOUR_IP>:8000` from their mobile devices or laptops. Code modifications should adhere to the project type-hinting and view-service separation rules in [CODE_STYLE.md](CODE_STYLE.md).
 
 ---
 
 ## Future Roadmap
 
-- **Analytics Dashboard:** Graphical reports, completion rates, and checkpoint throughput metrics.
+- **Analytics Dashboard:** Graphical reports and checkpoint throughput metrics.
 - **SMS Gateway Integration:** Dispatch real-time SMS notifications to participants upon checking in at designated checkpoints.
 - **Automatic Local Discovery:** Zero-configuration network announcement to simplify device connections on local networks.
 
