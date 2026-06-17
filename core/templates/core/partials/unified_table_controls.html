@@ -1,0 +1,180 @@
+<!-- Unified Table Controls Partial -->
+<div class="flex flex-col lg:flex-row gap-4 justify-between lg:items-center mb-4 fade-in relative z-10">
+  
+  {% if bulk_actions %}
+  <!-- Bulk Actions Section -->
+  <div class="flex gap-2 items-center w-full lg:w-auto lg:min-w-[300px]">
+    <select id="bulkAction" class="text-sm bg-gray-50 border border-gray-300 rounded-lg p-2 flex-1">
+      <option value="">انتخاب عملیات</option>
+      {% for action in bulk_actions %}
+        <option value="{{ action.value }}" {% if action.disabled %}disabled{% endif %}>{{ action.label }}</option>
+      {% endfor %}
+    </select>
+    <button onclick="executeBulkAction()" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg p-2 transition px-4 text-sm font-semibold">اجرای عملیات</button>
+  </div>
+  {% endif %}
+
+  <!-- Search and Sort Controls -->
+  <div class="flex flex-col sm:flex-row gap-3 w-full lg:w-auto lg:justify-end items-stretch sm:items-center">
+    
+    {% if order_fields %}
+    <!-- Sorting Section -->
+    <div class="flex gap-2 items-center w-full sm:w-auto sm:min-w-[320px]">
+      <select id="order-field" class="text-sm bg-gray-50 border border-gray-300 rounded-lg p-2 flex-1">
+        <option value="">مرتب سازی بر اساس</option>
+        {% for field in order_fields %}
+          <option value="{{ field.value }}" {% if order_by == field.value %}selected{% endif %}>{{ field.label }}</option>
+        {% endfor %}
+      </select>
+      <select id="order-direction" class="text-sm bg-gray-50 border border-gray-300 rounded-lg p-2 w-[80px]">
+        <option value="asc" {% if direction == 'asc' %}selected{% endif %}>صعودی</option>
+        <option value="desc" {% if direction == 'desc' %}selected{% endif %}>نزولی</option>
+      </select>
+      <button onclick="triggerSort()" class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg p-2 transition material-icons text-xl" title="اعمال مرتب‌سازی">sort_by_alpha</button>
+    </div>
+    {% endif %}
+
+    <!-- Search Input Section -->
+    <div class="relative w-full sm:w-[300px] md:w-[400px] z-30">
+      <input type="text" id="searchInput" placeholder="{{ search_placeholder|default:'جستجو ...' }}" value="{{ search_query|default:'' }}"
+        class="w-full p-3 pl-10 pr-10 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 text-sm font-vazir">
+      <span class="material-icons absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer" onclick="triggerSearch()">search</span>
+      
+      {% if search_fields_config or has_metadata_search %}
+      <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer" onclick="toggleSearchSettings()">settings</span>
+      
+      <!-- Search Settings Dropdown -->
+      <div id="searchSettings" class="hidden absolute top-[calc(100%+0.5rem)] left-0 bg-white border border-gray-300 rounded-lg shadow-lg p-4 z-50 w-full max-w-[400px]">
+        <h4 class="text-sm font-semibold text-gray-700 mb-2">تنظیمات جستجو</h4>
+        
+        {% for s_field in search_fields_config %}
+        <label class="flex items-center gap-2 mb-2 font-vazir text-sm text-gray-700 cursor-pointer">
+          <input type="checkbox" id="search{{ s_field.id }}" {% if s_field.value in search_fields_list %} checked {% endif %} class="text-indigo-600 rounded">
+          <span>{{ s_field.label }}</span>
+        </label>
+        {% endfor %}
+
+        {% if has_metadata_search %}
+        <div class="flex mt-2 flex-col rounded-lg border border-gray-300 p-3 bg-gray-50">
+          <label class="flex items-center gap-2 mb-2 font-vazir text-sm text-gray-700 cursor-pointer">
+            <input type="checkbox" id="searchMetadata" {% if 'metadata' in search_fields_list %} checked {% endif %} class="text-indigo-600 rounded">
+            <span>جستجو در متادیتا</span>
+          </label>
+          <div class="mt-2">
+            <label class="block text-xs text-gray-600 font-vazir mb-1">کلید متادیتا</label>
+            <input type="text" id="metadataKey" placeholder="کلید (مثال: سن)" value="{{ metadata_key|default:'' }}" class="w-full p-2 border border-gray-300 rounded-lg font-vazir text-xs focus:outline-none">
+          </div>
+          <div class="mt-2">
+            <label class="block text-xs text-gray-600 font-vazir mb-1">مقدار متادیتا</label>
+            <input type="text" id="metadataValue" placeholder="مقدار (مثال: ۲۳)" value="{{ metadata_value|default:'' }}" class="w-full p-2 border border-gray-300 rounded-lg font-vazir text-xs focus:outline-none">
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      {% endif %}
+    </div>
+
+  </div>
+</div>
+
+<!-- Scripts for Unified Table Operations -->
+<script>
+  function triggerSearch() {
+    const queryEl = document.getElementById('searchInput');
+    if (!queryEl) return;
+    
+    const query = queryEl.value.trim();
+    const orderFieldEl = document.getElementById('order-field');
+    const orderDirectionEl = document.getElementById('order-direction');
+    
+    const orderField = orderFieldEl ? orderFieldEl.value : '';
+    const orderDirection = orderDirectionEl ? orderDirectionEl.value : '';
+    
+    let sf = [];
+    // Configurable search fields list
+    const fieldIds = [
+      {% for s_field in search_fields_config %}
+        '{{ s_field.id }}',
+      {% endfor %}
+      {% if has_metadata_search %}'Metadata',{% endif %}
+    ];
+    
+    fieldIds.forEach(id => {
+      const el = document.getElementById('search' + id);
+      if (el && el.checked) {
+        let val = id.charAt(0).toLowerCase() + id.slice(1);
+        if (val === 'lastName') val = 'last_name';
+        if (val === 'phoneNumber') val = 'phone_number';
+        if (val === 'phone') val = 'phone_number';
+        sf.push(val);
+      }
+    });
+    
+    let url = `?q=${encodeURIComponent(query)}&ob=${orderField}&dir=${orderDirection}&sf=${sf.join(',')}`;
+    
+    const mkEl = document.getElementById('metadataKey');
+    const mvEl = document.getElementById('metadataValue');
+    if (mkEl && mvEl && sf.includes('metadata')) {
+      url += `&mk=${encodeURIComponent(mkEl.value)}&mv=${encodeURIComponent(mvEl.value)}`;
+    }
+    
+    window.location.href = url;
+  }
+
+  function triggerSort() {
+    triggerSearch();
+  }
+
+  function toggleSearchSettings() {
+    const settings = document.getElementById('searchSettings');
+    if (settings) {
+      settings.classList.toggle('hidden');
+    }
+  }
+
+  // Close search settings dropdown when clicking outside
+  document.addEventListener('click', function(event) {
+    const settings = document.getElementById('searchSettings');
+    const searchInput = document.getElementById('searchInput');
+    const settingsIcon = event.target.closest('.material-icons');
+    
+    if (settings && !settings.classList.contains('hidden')) {
+      if (!settings.contains(event.target) && !event.target.closest('#searchInput') && (!settingsIcon || settingsIcon.textContent !== 'settings')) {
+        settings.classList.add('hidden');
+      }
+    }
+  });
+
+  // Handle enter key in search inputs
+  document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) {
+      searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          triggerSearch();
+        }
+      });
+    }
+    
+    const mkEl = document.getElementById('metadataKey');
+    const mvEl = document.getElementById('metadataValue');
+    [mkEl, mvEl].forEach(el => {
+      if (el) {
+        el.addEventListener('keypress', function(e) {
+          if (e.key === 'Enter') {
+            triggerSearch();
+          }
+        });
+      }
+    });
+  });
+
+  function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('{{ select_all_id|default:"selectAll" }}');
+    if (!selectAllCheckbox) return;
+    const checkboxes = document.querySelectorAll('.{{ checkbox_class|default:"row-checkbox" }}');
+    checkboxes.forEach(cb => {
+      cb.checked = selectAllCheckbox.checked;
+    });
+  }
+</script>

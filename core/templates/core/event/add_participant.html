@@ -1,0 +1,161 @@
+{% extends 'core/base.html' %}
+{% load custom_tags %}
+{% load jalali_filters %}
+
+{% block title %}افزودن شخص به رویداد {{event.name}}{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .md-box {
+    font-family: 'Vazir', sans-serif !important;
+  }
+  td{
+    overflow-x: scroll;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="flex justify-between items-start mb-2">
+  <div class="flex flex-col ">
+  <h2 class="text-2xl font-bold text-indigo-700">افزودن شخص به شرکت‌کنندگان رویداد {{event.name}}</h2>
+    <a href='{% url 'events:detail' event.id %}' class="text-sm text-gray-500 mt-1">شناسه رویداد: {{event.id}} </a>
+  </div>
+</div>
+
+<!-- Search and Bulk Actions -->
+{% get_add_participant_table_config as table_config %}
+{% include 'core/partials/unified_table_controls.html' with bulk_actions=table_config.bulk_actions order_fields=table_config.order_fields search_fields_config=table_config.search_fields_config has_metadata_search=True checkbox_class='person-checkbox' select_all_id='selectAll' search_placeholder='جستجو در اشخاص ...' %}
+
+<div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-x-auto fade-in">
+  <table class="w-full text-right border-collapse responsive-table">
+    <thead class="bg-indigo-100 text-indigo-800">
+      <tr>
+        <th class="text-sm font-semibold border-b border-l border-indigo-200 w-12 p-3 text-center">
+          <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+        </th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-14 p-3 text-center">ردیف</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-16 p-3 text-center">شناسه</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 p-3 text-center">نام</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 p-3 text-center">نام خانوادگی</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 p-3 text-center">تاریخ تولد</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 p-3 text-center">شماره تلفن</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-64 p-3 text-center">متادیتا</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      {% for person in page_obj %}
+      <tr class="{% cycle 'bg-gray-100' 'bg-white' %} hover:bg-indigo-50 transition">
+        <td class="text-sm p-2 border-r border-b border-gray-200 text-center bg-indigo-100/50 checkbox-cell">
+          <input type="checkbox" name="selected_persons" value="{{ person.id }}" class="person-checkbox">
+        </td>
+        <td class="text-sm text-gray-700 p-2 border-x border-gray-200 text-center" data-label="ردیف">{{ forloop.counter }}</td>
+        <td class="text-sm text-gray-700 p-2 border-x border-gray-200 w-[75px] text-center" data-label="شناسه">{{ person.id|default:"-" }}</td>
+        <td class="text-sm text-gray-700 p-2 border-x border-gray-200 text-center" data-label="نام">{{ person.name|default:"-" }}</td>
+        <td class="text-sm text-gray-700 p-2 border-x border-gray-200 text-center" data-label="نام خانوادگی">{{ person.last_name|default:"-" }}</td>
+        <td class="text-sm text-gray-700 p-2 border-x border-gray-200 text-center" data-label="تاریخ تولد">{{ person.birth_date|to_jalali|default:"-" }}</td>
+        <td class="text-sm text-gray-700 p-2 border-x border-gray-200 text-center" data-label="شماره تلفن">{{ person.phone_number|default:"-" }}</td>
+        <td class="w-[300px] min-w-[300px] max-w-[300px] p-0 border-x border-gray-200" data-label="متادیتا">
+          <div class="w-full overflow-x-auto whitespace-nowrap text-xs p-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-50">
+            {% for key, value in person.metadata.items %}
+            <div class="md-box inline-block py-1 px-2 rounded-lg bg-indigo-100/50 border border-indigo-200 text-gray-700 font-bold">"{{ key }}": <span class="font-normal mr-1">"{{ value }}"</span></div>
+            {% empty %}
+            <span class="text-center block">-</span>
+            {% endfor %}
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr class="bg-white">
+        <td colspan="10" class="text-center text-gray-500 py-4 border-t border-gray-100">هیچ شخصی یافت نشد</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% include 'core/partials/unified_pagination.html' %}
+
+<!-- Modal for Add Person -->
+<div id="personModal" class="hidden fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex justify-center items-center z-50">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative">
+    <button onclick="document.getElementById('personModal').classList.add('hidden')" class="absolute top-2 left-2 text-gray-400 hover:text-gray-600">
+      <span class="material-icons">close</span>
+    </button>
+    <h3 class="text-xl font-bold mb-4 text-indigo-700">افزودن شخص جدید</h3>
+    <form class="space-y-4" method="POST" action="{% url 'people:create' %}">
+      {% csrf_token %}
+      <div>
+        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">نام</label>
+        <input type="text" id="first_name" name="name" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+      <div>
+        <label for="last_name" class="block text-sm font-medium text-gray-700 mb-1">نام خانوادگی</label>
+        <input type="text" id="last_name" name="last_name" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+      <div>
+        <label for="birth_date" class="block text-sm font-medium text-gray-700 mb-1">تاریخ تولد</label>
+        <input type="date" id="birth_date" name="birth_date" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+      <div>
+        <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">شماره تلفن</label>
+        <input type="tel" id="phone" name="phone" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+      </div>
+      <div>
+        <label for="metadata" class="block text-sm font-medium text-gray-700 mb-1">متادیتا (JSON، مثال: {"key": "value"})</label>
+        <textarea id="metadata" name="metadata" rows="5" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono resize-y"></textarea>
+      </div>
+      <div class="flex justify-end">
+        <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 shadow">ثبت</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function executeBulkAction() {
+    const action = document.getElementById('bulkAction').value;
+    const selectedPersons = Array.from(document.querySelectorAll('.person-checkbox:checked'))
+      .map(checkbox => checkbox.value);
+    
+    if (selectedPersons.length === 0) {
+      alert('لطفاً حداقل یک شخص را انتخاب کنید');
+      return;
+    }
+
+    if (action === 'add') {
+      if (confirm('آیا از افزودن اشخاص انتخاب شده به رویداد مطمئن هستید؟')) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url "events:participant_bulk_action" event.id %}';
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'csrfmiddlewaretoken';
+        csrfToken.value = '{{ csrf_token }}';
+        form.appendChild(csrfToken);
+        
+        const actionInput = document.createElement('input');
+        actionInput.type = 'hidden';
+        actionInput.name = 'action';
+        actionInput.value = action;
+        form.appendChild(actionInput);
+        
+        selectedPersons.forEach(id => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = 'participant_ids';
+          input.value = id;
+          form.appendChild(input);
+        });
+        
+        document.body.appendChild(form);
+        form.submit();
+      }
+    }
+  }
+</script>
+{% endblock %}

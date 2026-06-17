@@ -1,0 +1,446 @@
+{% extends 'core/base.html' %}
+{% load custom_tags %}
+{% load jalali_filters %}
+{% load static %}
+{% block title %}چک‌این{% endblock %}
+
+{% block extra_styles %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<style>
+.modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px); /* بلر پس‌زمینه */
+        z-index: 1000; /* بالاتر از سایدبار */
+      }
+      .modal-content {
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        width: 90%;
+        max-width: 32rem;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 0 10px rgba(0,0,0,0.2); /* سایه */
+        position: relative; /* برای موقعیت‌دهی دکمه بستن */
+      }
+      .modal-content .close-btn {
+        position: absolute;
+        top: 0.8rem;
+        left: 0.8rem; /* گوشه مدال */
+        cursor: pointer;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+      }
+
+  .loading-indicator {
+
+  gap: 0.25rem;
+  margin-top: 0.5rem;
+}
+.dots::after {
+  content: '...';
+  display: inline-block;
+  width: 1.5em;
+  text-align: left;
+  animation: dots 1.5s infinite;
+}
+@keyframes dots {
+  0% { content: ''; }
+  33% { content: '.'; }
+  66% { content: '..'; }
+  100% { content: '...'; }
+}
+
+  .md-box {
+    font-family: 'Vazir', sans-serif !important;
+  }
+  td {
+    overflow-x: scroll;
+  }
+  th {
+    overflow: hidden;
+    text-wrap: wrap;
+  }
+  .tab-container {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb #f9fafb;
+  }
+  .tab-container::-webkit-scrollbar {
+    height: 6px;
+  }
+  .tab-container::-webkit-scrollbar-thumb {
+    background-color: #e5e7eb;
+    border-radius: 3px;
+  }
+  .tab-container::-webkit-scrollbar-track {
+    background-color: #f9fafb;
+  }
+  .tab-button {
+    flex: 0 0 auto;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #4b5563;
+    background-color: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+  }
+  .tab-button:hover {
+    background-color: #e0e7ff;
+    color: #4338ca;
+  }
+  .tab-button.active {
+    color: #ffffff;
+    background-color: #4f46e5;
+    border-color: #4f46e5;
+  }
+  .tab-content {
+    display: none;
+    padding: 1rem;
+    background-color: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 0.375rem;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  .tab-content.active {
+    display: block;
+  }
+
+  .checkin-result {
+    margin-top: 1rem;
+  }
+  .tooltip {
+    position: relative;
+  }
+  .tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: -30px;
+    right: 0;
+    background: #4b5563;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+    font-family: Vazir, sans-serif;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+
+<div class="flex justify-between items-start mb-4 gap-2 min-w-0">
+  <div class="flex flex-col min-w-0">
+    <h2 class="text-lg sm:text-2xl font-bold text-gray-900 truncate" title="چک‌این رویداد {{event.name}}">چک‌این رویداد {{event.name}}</h2>
+    <a href="{% url 'events:detail' event.id %}" class="text-sm text-gray-500 mt-2 truncate block">شناسه رویداد: {{event.id}}</a>
+  </div>
+  <div class="flex flex-row gap-2 shrink-0">
+    <a href="{% url 'events:participants' event.id %}" class="flex items-center gap-1 bg-indigo-200/50 hover:bg-indigo-200 text-indigo-700 px-3 py-2 rounded-lg">
+        <span class="material-icons tooltip" data-tooltip="مدیریت شرکت‌کنندگان">account_box</span>
+      </a>
+      <a href="{% url 'events:schema' event.id %}" class="flex items-center gap-1 bg-indigo-200/50 hover:bg-indigo-200 text-indigo-700 px-3 py-2 rounded-lg">
+          <span class="material-icons tooltip" data-tooltip="داده‌ساختار">table_chart</span>
+      </a>
+  </div>
+</div>
+
+<div class="mb-6">
+    <div class="fade-in tab-container pb-3 mb-1">
+        {% for cp in check_points %}
+            <button class="tab-button {% if forloop.first %} active {% endif %}" data-tab-id="tab-{{cp.id}}">{{cp.name}}</button>
+        {% endfor %}
+    </div>
+    <div id="tab-contents" class="fade-in">
+        {% for cp in check_points %}
+            <div id="tab-{{cp.id}}" class="tab-content {% if forloop.first %} active {% endif %}"
+            hx-on:htmx:after-swap="closeModal()"
+            >
+              <div class="flex flex-col mb-2">
+                <div class="flex flex-row  justify-between">
+                <h3 class="text-lg text-indigo-700 ">{{cp.name}}</h3>
+                <div class="flex flex-row gap-2">
+                {% if cp.path.allow_duplicate_checkin %}
+              <div class="flex items-center gap-1 text-sm bg-orange-100/10 text-orange-700 px-3 py-1.5 rounded-lg border border-orange-400/80">چک‌این تکراری: مجاز</div>
+              {% else %}
+              <div class="flex items-center gap-1 text-sm bg-yellow-100/10 text-yellow-700 px-3 py-1.5 rounded-lg border border-yellow-400/80">چک‌این تکراری: غیر مجاز</div>
+              {% endif %}
+              {% if cp.path.enforce_checkpoint_order %}
+              <div class="flex items-center gap-1 text-sm bg-emerald-100/10 text-emerald-700 px-3 py-1.5 rounded-lg border border-emerald-400/80">رعایت ترتیب</div>
+              {% else %}
+              <div class="flex items-center gap-1 text-sm bg-red-100/10 text-red-700 px-3 py-1.5 rounded-lg border border-red-400/80">عدم رعایت ترتیب</div>
+              {% endif %}
+                </div>
+                </div>
+                <p class="text-xs text-gray-400 py-2">شناسه: {{cp.id}}<span class="mx-1"> | </span><a href="{% url 'events:path_detail' cp.path_id %}">مسیر: {{cp.path_id}}</a><span class="mx-1"> | </span><span>موقعیت در مسیر: {{cp.order}}</a></p>
+              </div>
+                <form
+                    hx-post="{% url 'operations:checkin_search' %}"
+                    hx-trigger="submit{% if user_settings.ci_auto_submit and user_settings.ci_auto_submit_char_num > 0 %}, keyup[target.value.length >= {{ user_settings.ci_auto_submit_char_num }} && event.keyCode !== 13 && event.keyCode !== 8 && !event.ctrlKey] from:find input[name=id] delay:{{ user_settings.ci_auto_submit_delay|default:500 }}ms{% endif %}"
+                    hx-target="#tab-{{cp.id}} .checkin-result"
+                    hx-swap="innerHTML"
+                    hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'
+                    hx-indicator="#tab-{{cp.id}} .loading-indicator"
+                    hx-disabled-elt="this"
+                    hx-vals='{"cp_id": "{{cp.id}}"}'
+                >
+                    <div class="w-full flex gap-2 items-center mb-4">
+                        <input
+                            name="id"
+                            type="text"
+                            class="shrink grow text-gray-800 text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            placeholder="شناسه شخص را وارد کنید"
+                            autocomplete="off"
+                        >
+                        <button
+                            type="submit"
+                            class="shrink-0 h-full bg-indigo-600 text-white text-sm p-3 rounded-lg"
+                        >چک‌این</button>
+                    </div>
+                </form>
+                {% include "core/partials/loading.html" %}
+                <div class="checkin-result" aria-live="polite"></div>
+            </div>
+        {% empty %}
+            <div class="fade-in bg-yellow-50 border border-yellow-200 rounded-xl shadow-md p-4  flex items-center gap-3 text-yellow-800">
+            <span class="material-icons text-yellow-600">warning</span>
+            <div class="flex-1 text-sm font-medium">هیچ چک‌‌پوینت فعالی برای چک‌‌این در دسترس نیست!</div>
+            <button onclick="this.parentElement.classList.add('hidden')" class="text-yellow-600 hover:bg-yellow-50 transition" title="بستن">
+                <span class="material-icons text-base">close</span>
+            </button>
+        </div>
+            
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Search and Bulk Actions -->
+{% get_checkin_page_table_config as table_config %}
+{% include 'core/partials/unified_table_controls.html' with bulk_actions=table_config.bulk_actions order_fields=table_config.order_fields search_fields_config=table_config.search_fields_config has_metadata_search=True checkbox_class='person-checkbox' select_all_id='selectAll' search_placeholder='جستجو در اشخاص ...' %}
+
+<div class="bg-white rounded-md shadow-md border border-gray-200 overflow-x-auto fade-in pb-1">
+  <table class="w-full text-right border-collapse responsive-table">
+    <thead class="bg-indigo-100 text-indigo-800">
+      <tr>
+        <th class="text-sm font-semibold border-b border-l border-indigo-200 w-12 py-3 px-2 text-center">
+          <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+        </th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-14 py-3 px-2 text-center whitespace-nowrap">ردیف</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-16 py-3 px-2 text-center whitespace-nowrap">شناسه</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap">نام</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap">نام خانوادگی</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap">تاریخ تولد</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap">شماره تلفن</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-64 py-3 px-2 text-center whitespace-nowrap">متادیتا (شخص)</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-64 py-3 px-2 text-center whitespace-nowrap">متادیتا (رویداد)</th>
+        {% for col in extra_columns %}
+          {% if col.can_view %}
+            <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap">{{col.column_name}}</th>
+          {% endif %}
+        {% endfor %}
+        <th class="text-sm font-semibold border-b border-r border-indigo-200 py-3 px-2 text-center whitespace-nowrap">عملیات</th>
+      </tr>
+    </thead>
+    <tbody class="divide-y divide-gray-100">
+      {% for person in page_obj %}
+      <tr class="{% cycle 'bg-gray-100' 'bg-white' %} hover:bg-indigo-50 transition">
+        <td class="text-sm p-2 border-r border-b border-gray-200 text-center bg-indigo-100/50 checkbox-cell">
+          <input type="checkbox" name="selected_persons" value="{{ person.id }}" class="person-checkbox">
+        </td>
+        <td class="text-sm text-gray-700 p-2 border-x border-gray-200 text-center" data-label="ردیف">{{ forloop.counter }}</td>
+        <td class="text-sm text-gray-700 p-2 border-x border-gray-200 w-[75px] text-center" data-label="شناسه">{{ person.id|default:"-" }}</td>
+        <td class="text-sm text-gray-700 p-2 border-x border-gray-200 text-center" data-label="نام">{{ person.name|default:"-" }}</td>
+        <td class="text-sm text-gray-700 p-2 border-x border-gray-200 text-center" data-label="نام خانوادگی">{{ person.last_name|default:"-" }}</td>
+        <td class="text-sm text-gray-700 p-2 border-x border-gray-200 text-center" data-label="تاریخ تولد">{{ person.birth_date|to_jalali|default:"-" }}</td>
+        <td class="text-sm text-gray-700 p-2 border-x border-gray-200 text-center" data-label="شماره تلفن">{{ person.phone_number|default:"-" }}</td>
+        <td class="w-[300px] min-w-[300px] max-w-[300px] p-0 border-x border-gray-200" data-label="متادیتا (شخص)">
+          <div class="w-full overflow-x-auto whitespace-nowrap text-xs p-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-50">
+            {% for key, value in person.metadata.items %}
+              <div class="md-box inline-block py-1 px-2 rounded-md bg-indigo-100/50 border border-indigo-200 text-gray-700 font-bold">"{{ key }}": <span class="font-normal mr-1">"{{ value }}"</span></div>
+            {% empty %}
+              <span class="text-center block">-</span>
+            {% endfor %}
+          </div>
+        </td>
+        <td class="w-[300px] min-w-[300px] max-w-[300px] p-0 border-x border-gray-200" data-label="متادیتا (رویداد)">
+          {% for item in person.event_pems %}
+            <div class="w-full overflow-x-auto whitespace-nowrap text-xs p-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-50">
+              {% for key, value in item.data.items %}
+                <div class="md-box inline-block py-1 px-2 rounded-md bg-indigo-100/50 border border-indigo-200 text-gray-700 font-bold">"{{ key }}": <span class="font-normal mr-1">"{{ value }}"</span></div>
+              {% empty %}
+                <span class="text-center block">-</span>
+              {% endfor %}
+            </div>
+          {% empty %}
+            <span class="text-center block">-</span>
+          {% endfor %}
+        </td>
+        {% for col in extra_columns %}
+          {% if col.can_view %}
+            {% with col|get_schema_data:person as data %}
+            <td class="text-sm text-gray-700 p-2 border-x border-gray-200 text-center" data-label="{{col.column_name}}" {% if data.2 %}title="{{data.2}}" {% elif data.1 %} title="از {{ data.1 }}" {% endif %}>
+              {{ data.0|default:'-' }}
+            </td>
+            {% endwith %}
+          {% endif %}
+        {% endfor %}
+        <td class="text-sm p-2 border-l border-gray-200 text-center" data-label="عملیات">
+          <div class="flex gap-3 justify-center items-center">
+            <button onclick="checkinPerson('{{ person.id }}')" class="text-indigo-600 hover:text-indigo-800" title="چک‌این">
+              <span class="material-icons text-lg">approval</span>
+            </button>
+          </div>
+        </td>
+      </tr>
+      {% empty %}
+      <tr class="bg-white">
+        <td colspan="{{ 11|add:extra_columns.count }}" class="text-center text-gray-500 py-4 border-t border-gray-100">هیچ شخصی یافت نشد</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% include 'core/partials/unified_pagination.html' %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<div id="description-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm" onclick="closeModal()">
+    <div class="bg-white rounded-xl shadow-lg p-6 w-full max-w-md" onclick="event.stopPropagation()">
+        <h3 class="text-xl font-bold mb-4 text-indigo-700">ثبت توضیحات</h3>
+        <div>
+            <label for="description-text" class="block text-sm font-medium text-gray-700 mb-2">توضیحات</label>
+            <textarea id="description-text" name="description" rows="4" class="w-full p-2 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+        </div>
+        <div class="mt-6 flex justify-end gap-3">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition">
+                لغو
+            </button>
+            <button type="submit" 
+                    id="modal-submit-button"  
+                    class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition">
+                تایید و ارسال
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="{% static 'core/js/htmx.min.js' %}"></script>
+<script>
+function toggleDropdown() {
+  const dropdownMenu = document.getElementById('dropdownMenu');
+  dropdownMenu.classList.toggle('hidden');
+  dropdownMenu.classList.toggle('opacity-0');
+  dropdownMenu.classList.toggle('-translate-y-2');
+}
+
+function toggleSelectAll() {
+  const selectAllCheckbox = document.getElementById('selectAll');
+  const personCheckboxes = document.querySelectorAll('.person-checkbox');
+
+  personCheckboxes.forEach(checkbox => {
+    checkbox.checked = selectAllCheckbox.checked;
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-button').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    document.querySelectorAll('.tab-content').forEach(content => {
+      content.classList.remove('active');
+    });
+
+    const tabButton = document.querySelector(`[data-tab-id="${tabId}"]`);
+    const tabContent = document.getElementById(tabId);
+    tabButton.classList.add('active');
+    tabContent.className = 'tab-content active';
+
+    const input = tabContent.querySelector('.checkin-input');
+    if (input) input.focus();
+  }
+
+  document.querySelectorAll('.tab-button').forEach(button => {
+    button.addEventListener('click', () => switchTab(button.dataset.tabId));
+  });
+});
+
+ function openModal(action, checkinId) {
+    const formId = `main-checkin-form-${checkinId}`;
+    const actionInputId = `form-action-input-${checkinId}`;
+
+    const formElement = document.getElementById(formId);
+    const actionInputElement = document.getElementById(actionInputId);
+
+    if (!formElement || !actionInputElement) {
+        console.error(`Form or action input not found for checkinId: ${checkinId}`);
+        return;
+    }
+
+    actionInputElement.value = action;
+
+    const modal = document.getElementById('description-modal');
+    const submitButton = document.getElementById('modal-submit-button');
+    submitButton.setAttribute('form', formId);
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        document.getElementById('description-text').focus();
+    }, 50);
+}
+
+function closeModal() {
+    const modal = document.getElementById('description-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.getElementById('description-text').value = '';
+        document.getElementById('modal-submit-button').removeAttribute('form');
+    }
+}
+
+
+function checkinPerson(personId) {
+    const activeTabButton = document.querySelector('.tab-button.active');
+    if (!activeTabButton) {
+        console.error("No active tab found.");
+        return;
+    }
+
+    const tabId = activeTabButton.getAttribute('data-tab-id');
+
+    const activeTabContent = document.getElementById(tabId);
+    if (!activeTabContent) {
+        console.error(`Tab content with id ${tabId} not found.`);
+        return;
+    }
+
+    const form = activeTabContent.querySelector('form');
+    const input = activeTabContent.querySelector('input[name="id"]');
+    
+    if (form && input) {
+        input.value = personId;
+        htmx.trigger(form, 'submit');
+    } else {
+        console.error("Form or input field not found in the active tab.");
+    }
+}
+
+</script>
+{% endblock %}
+

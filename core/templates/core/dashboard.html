@@ -1,0 +1,441 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% load jalali_filters %}
+{% block title %}داشبورد{% endblock %}
+
+{% block extra_styles %}
+<link rel="stylesheet" href="{% static 'core/css/leaflet.css' %}" />
+<style>
+  .checkpoint-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-left: 4px;
+    position: relative;
+    transition: transform 0.2s;
+  }
+  .checkpoint-dot:hover {
+    cursor: pointer;
+    transform: scale(1.2);
+  }
+  .checkpoint-dot:hover .tooltip {
+    visibility: visible;
+    opacity: 1;
+  }
+  .tooltip {
+    visibility: hidden;
+    opacity: 0;
+    position: fix;
+    top: -60px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1F2937;
+    color: white;
+    padding: 6px;
+    border-radius: 6px;
+    font-size: 11px;
+    white-space: nowrap;
+    z-index: 10;
+    transition: opacity 0.2s;
+  }
+  .latest-events {
+    position: relative;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    white-space: nowrap;
+    height: 24px;
+  }
+  .latest-events.long {
+    mask-image: linear-gradient(to left, transparent, black 10%, black 90%, transparent);
+    -webkit-mask-image: linear-gradient(to left, transparent, black 10%, black 90%, transparent);
+  }
+  .latest-events .text {
+    font-size: 0.85rem;
+    color: #374151;
+    transition: transform 0.3s;
+  }
+  
+  .blink-dot {
+    width: 10px;
+    height: 10px;
+    background: #10B981;
+    border-radius: 50%;
+    margin-left: 10px;
+    animation: blink 1s infinite;
+  }
+  @keyframes scroll {
+    0% { transform: translateX(100%); }
+    100% { transform: translateX(-100%); }
+  }
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  .latest-events .text {
+    animation: scroll 15s linear infinite;
+  }
+  .latest-events:hover .text {
+    animation-play-state: paused;
+  }
+  #map { height: 100%; width: 100%; }
+  .custom-marker {
+    width: 14px;
+    height: 14px;
+    background-color: 4F46E5;
+    border-radius: 50%;
+    margin-left: -7px;
+    margin-top: -7px;
+  }
+  .event-widget {
+    transition: background-color 0.5s ease, border 0.5s ease, opacity 0.5s ease, color 0.5s ease;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-row justify-between items-center gap-4 mb-6 w-full min-w-0">
+  <h2 class="text-xl sm:text-3xl font-bold text-gray-800 truncate" title="داشبورد">داشبورد</h2>
+  <div class="flex flex-row items-center gap-2 relative w-auto justify-start shrink-0">
+    <div class="hidden sm:block bg-white rounded-xl shadow px-4 py-2 text-sm text-gray-700 border border-gray-300">
+      آدرس سرور: <span class="font-mono text-indigo-600">{{ server_address }}</span>
+    </div>
+    
+    <div class="relative text-left">
+      <button id="profile-menu-button" class="flex items-center gap-1 bg-white shadow hover:bg-gray-50 text-indigo-700 px-2 py-2 rounded-xl transition border border-gray-300">
+        <span class="material-icons">account_circle</span>
+      </button>
+
+      <div id="profile-menu" class="absolute top-12 left-0 w-56 mt-2 rounded-xl shadow-lg bg-white ring-1 ring-black ring-opacity-5 focus:outline-none hidden transform opacity-0 scale-95 transition-all duration-200 origin-top-left z-50">
+        <div class="py-1" role="menu" aria-orientation="vertical" aria-labelledby="profile-menu-button">
+          <div class="flex items-center px-4 py-3 border-b border-gray-200">
+            <span class="material-icons text-3xl text-gray-400">person</span>
+            <div class="mr-3">
+              <p class="text-sm font-medium text-gray-900">{{user.username}}</p>
+              <p class="text-xs text-gray-500">نقش: {% for group in user.groups.all %}{{group.name}}{%if not forloop.last %}، {%endif%}{%endfor%}</p>
+            </div>
+          </div>
+          <a href="{% url 'accounts:settings_general' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+            <span class="material-icons text-base align-middle ml-2">settings</span>
+            تنظیمات
+          </a>
+          <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+            <span class="material-icons text-base align-middle ml-2">help_outline</span>
+            پشتیبانی
+          </a>
+          <form method="post" action="{% url 'accounts:logout' %}">
+            {% csrf_token %}
+            <button type="submit" class="w-full text-right block px-4 py-2 text-sm text-red-600 hover:bg-red-100" role="menuitem">
+              <span class="material-icons text-base align-middle ml-2">logout</span>
+              خروج
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Latest Events Widget -->
+<div class="bg-white p-3 rounded-2xl shadow-md mb-4 fade-in animation-delay-100">
+  <div class="flex items-center h-6">
+    <span class="blink-dot"></span>
+    <div id="latest-events" class="latest-events flex-1">
+      <span class="text">{{ latest_events_text|default:"هیچ رویداد جدیدی ثبت نشده است" }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- First Row: Active Event and Stats -->
+<div class="grid grid-cols-12 gap-6 mb-6">
+  <!-- Active Event Widget -->
+  <div class="col-span-12 md:col-span-5 event-widget {% if active_event.is_active %}bg-gradient-to-tr from-indigo-600 via-purple-500 to-pink-500 text-white{% else %}bg-white border border-gray-300 shadow-sm text-gray-600{% endif %} p-6 rounded-2xl shadow-xl relative overflow-hidden min-h-[130px] md:h-[130px] fade-in animation-delay-200">
+    <div class="absolute inset-0 opacity-40" style="background-image: url('https://www.transparenttextures.com/patterns/cubes.png'); background-repeat: repeat;"></div>
+    <div class="relative z-10 flex justify-between items-center h-full gap-4">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span class="material-icons text-2xl">event</span>
+          <h3 class="text-base font-bold">{% if active_event.is_active %}رویداد فعال{% else %}آخرین رویداد فعال{% endif %}</h3>
+        </div>
+        <p href="{% url 'events:detail' active_event.id %}" class="font-bold text-xl mb-2">{{ active_event.name|default:"هیچ رویداد فعالی وجود ندارد" }}</p>
+        <p class="event-time text-sm " style="display: {% if active_event.is_active and active_event.last_start_time %}block{% elif not active_event.is_active and active_event.last_stop_time %}block{% else %}none{% endif %};">
+          {% if active_event.is_active and active_event.last_start_time %}
+            شروع: {{ active_event.last_start_time|to_jalali:'%Y/%m/%d %H:%M' }}
+          {% elif not active_event.is_active and active_event.last_stop_time %}
+            توقف: {{ active_event.last_stop_time|to_jalali:'%Y/%m/%d %H:%M' }}
+          {% endif %}
+        </p>
+      </div>
+      <button id="toggle-event-btn" data-event="{{ active_event.id|default:'' }}" class="bg-white text-indigo-600 ripple rounded-full w-14 h-14 flex items-center justify-center shadow-lg hover:bg-gray-100 transition flex-shrink-0">
+        <span class="material-icons text-3xl">{% if active_event.is_active %}pause{% else %}play_arrow{% endif %}</span>
+      </button>
+    </div>
+  </div>
+  <!-- Stats Widget -->
+  <div class="col-span-12 md:col-span-7 bg-white p-4 rounded-2xl shadow-md min-h-[130px] md:h-[130px] flex flex-col justify-between fade-in animation-delay-300">
+    <div class="flex items-center gap-3 mb-3">
+      <span class="material-icons text-indigo-600 text-2xl">assessment</span>
+      <h3 class="text-base font-bold text-gray-700">آمار کلی</h3>
+    </div>
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div class="bg-gray-50 p-2 rounded-lg flex items-center gap-2">
+        <span class="material-icons text-indigo-600 text-lg">wifi</span>
+        <div>
+          <p class="text-xs text-gray-600">کاربران فعال</p>
+          <p class="font-semibold text-sm text-gray-800">{{ stats.connected_users }} کاربر</p>
+        </div>
+      </div>
+      <div class="bg-gray-50 p-2 rounded-lg flex items-center gap-2">
+        <span class="material-icons text-indigo-600 text-lg">people</span>
+        <div>
+          <p class="text-xs text-gray-600">تعداد اشخاص</p>
+          <p class="font-semibold text-sm text-gray-800">{{ stats.person_count }} نفر</p>
+        </div>
+      </div>
+      <div class="bg-gray-50 p-2 rounded-lg flex items-center gap-2">
+        <span class="material-icons text-indigo-600 text-lg">event</span>
+        <div>
+          <p class="text-xs text-gray-600">رویدادها</p>
+          <p class="font-semibold text-sm text-gray-800">{{ stats.event_count }} رویداد</p>
+        </div>
+      </div>
+      <div class="bg-gray-50 p-2 rounded-lg flex items-center gap-2">
+        <span class="material-icons text-indigo-600 text-lg">map</span>
+        <div>
+          <p class="text-xs text-gray-600">مسیرها</p>
+          <p class="font-semibold text-sm text-gray-800">{{ stats.path_count }} مسیر</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="conditional-widgets" class="grid grid-cols-12 gap-6 {% if not active_event.is_active %}hidden{% endif %}">
+  
+  <div class="col-span-12 md:col-span-7 bg-white p-4 rounded-2xl shadow-md h-80 overflow-hidden fade-in animation-delay-400">
+    <div class="flex items-center gap-3 mb-4">
+      <span class="material-icons text-indigo-600 text-2xl">map</span>
+      <h3 class="text-lg font-bold text-gray-700">محوطه</h3>
+    </div>
+    <div id="map" class="rounded-lg" style="height: 83%;"></div>
+  </div>
+
+  <div id="tooltip" class="fixed hidden opacity-0 transition-opacity duration-200 bg-gray-800 text-white text-xs py-1 px-2 rounded z-50 whitespace-nowrap pointer-events-none"></div>
+  <div class="col-span-12 md:col-span-5 bg-white p-4 rounded-2xl shadow-md h-80 fade-in animation-delay-500 ">
+    <div class="flex items-center gap-3 mb-4 ">
+      <span class="material-icons text-indigo-600 text-2xl">route</span>
+      <h3 class="text-lg font-bold text-gray-700">مسیرهای فعال</h3>
+    </div>
+    <div class="space-y-3 h-[85%] overflow-y-auto overflow-x-hidden px-4">
+      {% for path in active_paths %}
+        <div class="flex items-center justify-between py-2">
+          <a href="{% url 'events:path_detail' path.id %}"> <h4 class="text-sm font-semibold text-gray-800">{{ path.name }}</h4></a>
+          <div class="flex items-center gap-1">
+            {% for checkpoint in path.checkpoints.all %}
+              <span 
+                class="checkpoint-dot"
+                style="background-color: {{ checkpoint.color|default:'EF4444' }};"
+                onmouseover="showTooltip(this)" 
+                onmouseout="hideTooltip()"
+                data-name="{{ checkpoint.name }}"
+                data-user="{{ checkpoint.user.username|default:"" }}"
+                >
+              </span>
+            {% endfor %}
+          </div>
+        </div>
+        {% if not forloop.last %}
+          <hr class="border-gray-200">
+        {% endif %}
+      {% empty %}
+        <p class="text-sm text-gray-600">هیچ مسیر فعالی وجود ندارد.</p>
+      {% endfor %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'core/js/leaflet.js' %}" ></script>
+<script>
+  // A variable to hold the map instance
+  let map = null;
+
+  // Function to initialize the Leaflet map
+  function initializeMap() {
+    // If map is already initialized, do nothing.
+    if (map) return; 
+
+    const mapContainer = document.getElementById('map');
+    if (mapContainer) {
+      map = L.map('map').setView([35.6892, 51.3890], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+      }).addTo(map);
+
+      // Custom Indigo Circle Marker
+      const indigoCircle = L.divIcon({
+        className: 'custom-marker',
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+        popupAnchor: [0, -7]
+      });
+
+      // Add markers with popups
+      const points = {{ map_points|safe }};
+      points.forEach(point => {
+        L.marker([point.lat, point.lng], { icon: indigoCircle })
+          .addTo(map)
+          .bindPopup(point.popup);
+      });
+
+      // Add polygon with Indigo theme
+      L.polygon(points.map(p => [p.lat, p.lng]), { 
+        color: '#4F46E5',
+        fillColor: '#818CF8',
+        fillOpacity: 0.5,
+        weight: 3,
+        dashArray: '5, 5'
+      }).addTo(map);
+      
+      // Fixes potential map rendering issues when its container was hidden
+      setTimeout(() => map.invalidateSize(), 100);
+    }
+  }
+
+  // --- Logic to run after the page is fully loaded ---
+  document.addEventListener('DOMContentLoaded', () => {
+    // Check if the map widgets are visible on initial load
+    const conditionalWidgets = document.getElementById('conditional-widgets');
+    if (!conditionalWidgets.classList.contains('hidden')) {
+      initializeMap();
+    }
+
+    // Control Latest Events Animation
+    const latestEvents = document.getElementById('latest-events');
+    const textElement = latestEvents.querySelector('.text');
+    if (textElement.scrollWidth > latestEvents.offsetWidth) {
+      latestEvents.classList.add('long');
+    }
+  });
+
+
+  // --- Toggle Event Status ---
+  document.getElementById('toggle-event-btn').addEventListener('click', function() {
+    const eventId = this.getAttribute('data-event');
+    const isActive = this.querySelector('span').textContent === 'pause';
+    const action = isActive ? 'pause' : 'play';
+
+    if (action === 'pause' && !confirm('آیا از متوقف کردن این رویداد مطمئن هستید؟')) return;
+    if (action === 'play' && !confirm('آیا از فعال کردن این رویداد مطمئن هستید؟')) return;
+
+    fetch('{% url "events:toggle_status" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': '{{ csrf_token }}'
+      },
+      body: JSON.stringify({ event_id: eventId, action: action })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        const widget = document.querySelector('.event-widget');
+        const title = widget.querySelector('h3');
+        const name = widget.querySelector('p.font-bold');
+        let time = widget.querySelector('.event-time') || document.createElement('p');
+        const button = widget.querySelector('button');
+        const icon = button.querySelector('span');
+        const conditionalWidgets = document.getElementById('conditional-widgets');
+
+        // Update widget content
+        title.textContent = data.event.is_active ? 'رویداد فعال' : 'آخرین رویداد فعال';
+        name.textContent = data.event.name;
+        time.className = `event-time text-sm`;
+        if (data.event.is_active && data.event.last_start_time) {
+          time.textContent = `شروع: ${data.event.last_start_time}`;
+          if (!time.parentNode) name.parentNode.appendChild(time);
+        } else if (!data.event.is_active && data.event.last_stop_time) {
+          time.textContent = `توقف: ${data.event.last_stop_time}`;
+          if (!time.parentNode) name.parentNode.appendChild(time);
+        } else {
+          if (time.parentNode) time.parentNode.removeChild(time);
+        }
+
+        // Update button and style
+        widget.className = `col-span-5 event-widget ${data.event.is_active ? 'bg-gradient-to-tr from-indigo-600 via-purple-500 to-pink-500 text-white' : 'bg-white border border-gray-300 shadow-sm text-gray-600'} p-6 rounded-2xl shadow-xl relative overflow-hidden h-[130px]`;
+        icon.textContent = data.event.is_active ? 'pause' : 'play_arrow';
+        button.setAttribute('data-event', data.event.id);
+        
+        // ** NEW LOGIC TO SHOW/HIDE WIDGETS **
+        if (data.event.is_active) {
+          conditionalWidgets.classList.remove('hidden');
+          initializeMap(); // Initialize map if it's the first time being shown
+        } else {
+          conditionalWidgets.classList.add('hidden');
+        }
+
+      } else {
+        alert('خطا: ' + data.error);
+      }
+    })
+    .catch(error => {
+      alert('خطا در ارتباط با سرور');
+      console.error(error);
+    });
+  });
+
+  // --- Tooltip Functions ---
+  function showTooltip(el) {
+    const tooltip = document.getElementById('tooltip');
+    const name = el.getAttribute('data-name');
+    const user = el.getAttribute('data-user');
+    tooltip.innerHTML = `${name}<br>کاربر: ${user}`;
+    const rect = el.getBoundingClientRect();
+    tooltip.style.top = `${rect.top + window.scrollY - 40}px`;
+    tooltip.style.left = `${rect.left + window.scrollX + (rect.width / 2) - (tooltip.offsetWidth / 2)}px`;
+    tooltip.classList.remove('hidden');
+    tooltip.classList.add('opacity-100');
+  }
+
+  function hideTooltip() {
+    const tooltip = document.getElementById('tooltip');
+    tooltip.classList.remove('opacity-100');
+    tooltip.classList.add('hidden');
+  }
+
+  // --- Dropdown Logic ---
+  const profileMenuButton = document.getElementById('profile-menu-button');
+  const profileMenu = document.getElementById('profile-menu');
+  
+  profileMenuButton.addEventListener('click', () => {
+      const isMenuHidden = profileMenu.classList.contains('hidden');
+      if (isMenuHidden) {
+          profileMenu.classList.remove('hidden');
+          setTimeout(() => {
+              profileMenu.classList.remove('opacity-0', 'scale-95');
+              profileMenu.classList.add('opacity-100', 'scale-100');
+          }, 10);
+      } else {
+          profileMenu.classList.remove('opacity-100', 'scale-100');
+          profileMenu.classList.add('opacity-0', 'scale-95');
+          setTimeout(() => {
+              profileMenu.classList.add('hidden');
+          }, 200);
+      }
+  });
+
+  document.addEventListener('click', (event) => {
+      if (!profileMenuButton.contains(event.target) && !profileMenu.contains(event.target)) {
+          if (!profileMenu.classList.contains('hidden')) {
+              profileMenu.classList.remove('opacity-100', 'scale-100');
+              profileMenu.classList.add('opacity-0', 'scale-95');
+              setTimeout(() => {
+                  profileMenu.classList.add('hidden');
+              }, 200);
+          }
+      }
+  });
+</script>
+{% endblock %}

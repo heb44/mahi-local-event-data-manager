@@ -1,0 +1,40 @@
+{% extends 'core/settings/base.html' %}
+{% block settings_title %}تنظمیات عمومی{% endblock %}
+{% block settings_content %}
+<form method="POST" action="{% url 'accounts:settings_general' %}">
+    {% csrf_token %}
+    <details class="mb-4">
+        <summary class="cursor-pointer p-2 bg-gray-50 border border-gray-300 rounded-md text-gray-800 text-sm font-medium hover:bg-gray-100 open:bg-indigo-100">نمایش اعداد</summary>
+        <div class="p-4 space-y-4">
+            <div>
+                <label class="flex items-center">
+                    <input
+                        type="radio"
+                        name="digits_type"
+                        value="en"
+                        class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                        {% if not use_persian_digits %} checked {% endif %}
+                    >
+                    <span class="mr-2 text-sm text-gray-800">اعداد انگلیسی</span>
+                </label>
+            </div>
+            <div>
+                <label class="flex items-center">
+                    <input
+                        type="radio"
+                        name="digits_type"
+                        value="fa"
+                        class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                        {% if use_persian_digits %} checked {% endif %}
+                    >
+                    <span class="mr-2 text-sm text-gray-800">اعداد فارسی</span>
+                </label>
+            </div>
+        </div>
+    </details>
+
+<div class="flex justify-end">
+        <button type="submit" class="px-4 py-2 text-md bg-green-600 text-white rounded-lg">ذخیره</button>
+    </div>
+</form>
+{% endblock %}

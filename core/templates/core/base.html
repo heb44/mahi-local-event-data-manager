@@ -1,0 +1,355 @@
+{% load static %}
+{% load custom_tags %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}مدیریت محوطه{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'core/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/fonts.css' %}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link type="text/css" rel="stylesheet" href="{% static 'core/css/jalalidatepicker.min.css' %}" />
+    <link rel="stylesheet" href="{% static 'core/css/datepicker_widget.css' %}">
+    <link rel="stylesheet" href="{% static 'core/css/messages.css' %}">
+    <link rel="icon" type="image/png" href="{% static 'core/images/fav icon.png' %}">
+    
+    {% block extra_styles %}
+    {% endblock %}
+    <style>
+        /* استایل برای آیتم فعال منو */
+        .sidebar-link.active {
+            background-color: #eef2ff; /* bg-indigo-50 */
+            color: #4338ca; /* text-indigo-700 */
+            font-weight: 600; /* font-semibold */
+        }
+        .sidebar-link.active .material-icons {
+            color: #4f46e5; /* text-indigo-600 */
+        }
+        
+        /* افزایش ابعاد کلیک (Touch Targets) برای دکمه‌های عملیات جدول‌ها و کارت‌ها */
+        .responsive-table td a, 
+        .responsive-table td button,
+        .flex.gap-3.justify-center.items-center a,
+        .flex.gap-3.justify-center.items-center button,
+        .flex.gap-2.justify-end.mt-2 a,
+        .flex.gap-2.justify-end.mt-2 button {
+            min-width: 44px;
+            min-height: 44px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 9999px;
+            transition: all 0.2s ease;
+        }
+        
+        /* هاور ملایم برای آیکون‌های لمسی */
+        .responsive-table td a:hover, 
+        .responsive-table td button:hover,
+        .flex.gap-3.justify-center.items-center a:hover,
+        .flex.gap-3.justify-center.items-center button:hover,
+        .flex.gap-2.justify-end.mt-2 a:hover,
+        .flex.gap-2.justify-end.mt-2 button:hover {
+            background-color: rgba(79, 70, 229, 0.08); /* indigo-600/8 */
+        }
+
+        /* تایپوگرافی سیال برای جلوگیری از شکستن عنوان صفحه‌ها در موبایل */
+        @media (max-width: 639px) {
+            h1, h2 {
+                font-size: clamp(1.1rem, 4.5vw, 1.25rem) !important;
+                letter-spacing: -0.01em;
+            }
+        }
+
+        /* Safe Area Helper for Mobile Devices */
+        .pb-safe {
+            padding-bottom: env(safe-area-inset-bottom, 0px);
+        }
+    </style>
+<body class="bg-gray-100 flex flex-col min-h-screen">
+    <!-- Top Mobile Navigation Bar -->
+    <header class="md:hidden flex items-center justify-between bg-white px-4 py-3 border-b border-gray-200 shadow-sm sticky top-0 z-40">
+        <div class="flex items-center gap-2">
+            <svg class="w-8 h-8 text-indigo-600" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M3 13h2v-2H3v2zm2-2h2v-2H5v2zm2-2h2V7H7v2zm2-2h2V5H9v2zm2-2h2V3h-2v2zm4 2v2h2V7h-2zm2 2v2h2V9h-2zm0 2v2h2v-2h-2zm0 2v2h2v-2h-2zm-2 2h2v2h-2v-2zm-2 2h2v2h-2v-2zm-2 0v2h2v-2h-2z"/>
+            </svg>
+            <h1 class="text-xl font-bold text-indigo-600">مدیریت محوطه</h1>
+        </div>
+        <button id="mobile-menu-toggle" type="button" class="text-gray-700 hover:text-indigo-600 focus:outline-none p-1 transition-colors">
+            <span class="material-icons text-3xl">menu</span>
+        </button>
+    </header>
+
+    <div class="flex-1 flex flex-col md:flex-row h-full overflow-hidden">
+        <!-- Sidebar Backdrop (for mobile) -->
+        <div id="sidebar-backdrop" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-40 hidden md:hidden transition-opacity duration-300"></div>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="fixed inset-y-0 right-0 z-50 w-64 bg-white shadow-xl border-l border-gray-200 p-4 flex flex-col transform translate-x-full transition-transform duration-300 md:relative md:translate-x-0 md:flex md:w-64 md:shadow-lg md:border-r md:border-l-0 md:inset-auto">
+            <!-- Sidebar Header for Mobile -->
+            <div class="flex items-center justify-between md:hidden mb-4 border-b border-gray-100 pb-3">
+                <span class="text-lg font-bold text-indigo-600">منوی سیستم</span>
+                <button id="mobile-menu-close" type="button" class="text-gray-500 hover:text-red-600 p-1 transition-colors">
+                    <span class="material-icons text-2xl">close</span>
+                </button>
+            </div>
+
+            <!-- Sidebar Header for Desktop -->
+            <div class="hidden md:flex items-center gap-2 mb-6">
+                <svg class="w-8 h-8 text-indigo-600" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M3 13h2v-2H3v2zm2-2h2v-2H5v2zm2-2h2V7H7v2zm2-2h2V5H9v2zm2-2h2V3h-2v2zm4 2v2h2V7h-2zm2 2v2h2V9h-2zm0 2v2h2v-2h-2zm0 2v2h2v-2h-2zm-2 2h2v2h-2v-2zm-2 2h2v2h-2v-2zm-2 0v2h2v-2h-2z"/>
+                </svg>
+                <h1 class="text-2xl font-bold text-indigo-600">مدیریت محوطه</h1>
+            </div>
+            
+            <nav class="space-y-1 overflow-y-auto flex-1 pr-1">
+                <a href="{% url 'operations:dashboard' %}" class="sidebar-link flex items-center gap-3 text-gray-700 hover:bg-indigo-50 px-3 py-2 rounded-md transition {% if active_page == 'dashboard' %}active{% endif %}">
+                    <span class="material-icons text-xl">dashboard</span>
+                    داشبورد
+                </a>
+                
+                <a href="{% url 'operations:checkin' %}" class="sidebar-link flex items-center gap-3 text-gray-700 hover:bg-indigo-50 px-3 py-2 rounded-md transition {% if active_page == 'checkin' %}active{% endif %}">
+                    <span class="material-icons text-xl">approval</span>
+                    چک‌این
+                </a>
+
+                <a href="{% url 'events:list' %}" class="sidebar-link flex items-center gap-3 text-gray-700 hover:bg-indigo-50 px-3 py-2 rounded-md transition {% if active_page == 'events' %}active{% endif %}">
+                    <span class="material-icons text-xl">event</span>
+                    رویدادها
+                </a>
+
+                <a href="{% url 'events:paths' %}" class="sidebar-link flex items-center gap-3 text-gray-700 hover:bg-indigo-50 px-3 py-2 rounded-md transition {% if active_page == 'paths' %}active{% endif %}">
+                    <span class="material-icons text-xl">map</span>
+                    مسیرها
+                </a>
+                
+                <a href="{% url 'events:checkpoints' %}" class="sidebar-link flex items-center gap-3 text-gray-700 hover:bg-indigo-50 px-3 py-2 rounded-md transition {% if active_page == 'checkpoints' %}active{% endif %}">
+                    <span class="material-icons text-xl">place</span>
+                    چک‌پوینت‌ها
+                </a>
+
+                <a href="{% url 'people:list' %}" class="sidebar-link flex items-center gap-3 text-gray-700 hover:bg-indigo-50 px-3 py-2 rounded-md transition {% if active_page == 'persons' %}active{% endif %}">
+                    <span class="material-icons text-xl">group</span>
+                    اشخاص
+                </a>
+
+                <a href="{% url 'accounts:users' %}" class="sidebar-link flex items-center gap-3 text-gray-700 hover:bg-indigo-50 px-3 py-2 rounded-md transition {% if active_page == 'users' %}active{% endif %}">
+                    <span class="material-icons text-xl">supervisor_account</span>
+                    کاربران
+                </a>
+
+                <a href="{% url 'events:schema_redirect' %}" class="sidebar-link flex items-center gap-3 text-gray-700 hover:bg-indigo-50 px-3 py-2 rounded-md transition {% if active_page == 'schema' %}active{% endif %}">
+                    <span class="material-icons text-xl">table_chart</span>
+                    داده‌ساختار
+                </a>
+                
+                <a href="{% url 'events:participants_redirect' %}" class="sidebar-link flex items-center gap-3 text-gray-700 hover:bg-indigo-50 px-3 py-2 rounded-md transition {% if active_page == 'participants' %}active{% endif %}">
+                    <span class="material-icons text-xl">account_box</span>
+                    شرکت کنندگان
+                </a>
+
+                <div>
+                    <button type="button" class="bg-white submenu-toggle sidebar-link flex items-center justify-between w-full gap-3 text-gray-700 hover:bg-indigo-50 px-3 py-2 rounded-md transition {% if active_page == 'reports' %}active{% endif %}">
+                        <span class="flex items-center gap-3">
+                            <span class="material-icons text-xl">analytics</span>
+                            گزارشات
+                        </span>
+                        <span class="material-icons transform transition-transform duration-200">expand_more</span>
+                    </button>
+                    <div class="submenu-content max-h-0 overflow-hidden transition-all duration-300 ease-in-out">
+                        <div class="pr-5 pt-1 space-y-1">
+                            <a href="{% url 'operations:checkins' %}" class="sidebar-link flex items-center gap-3 text-gray-600 hover:bg-indigo-50 hover:text-gray-900 px-3 py-2 rounded-md transition text-sm {% if active_page == 'checkins' %}active{% endif %}">
+                                <span class="material-icons text-xl">assignment_turned_in</span>
+                                چک‌این ها
+                            </a>
+                            <a href="#" class="sidebar-link flex items-center gap-3 text-gray-600 hover:bg-indigo-50 hover:text-gray-900 px-3 py-2 rounded-md transition text-sm {% if active_subpage == 'daily_report' %}active{% endif %}">
+                                <span class="material-icons text-xl">calendar_today</span>
+                                مبتنی‌ بر چک‌پوینت
+                            </a>
+                            <a href="#" class="sidebar-link flex items-center gap-3 text-gray-600 hover:bg-indigo-50 hover:text-gray-900 px-3 py-2 rounded-md transition text-sm {% if active_subpage == 'monthly_report' %}active{% endif %}">
+                                <span class="material-icons text-xl">calendar_month</span>
+                                مبتنی‌ بر شخص
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <a href="{% url 'accounts:settings_general' %}" class="sidebar-link flex items-center gap-3 text-gray-700 hover:bg-indigo-50 px-3 py-2 rounded-md transition {% if active_page == 'settings' %}active{% endif %}">
+                    <span class="material-icons text-xl">settings</span>
+                    تنظیمات
+                </a>
+            </nav>
+        </aside>
+
+        {% if messages %}
+            <div class="fixed top-5 z-50 space-y-3 left-1/2 -translate-x-1/2 transform w-[90%] md:w-auto">
+                {% for message in messages %}
+                    <div id="msg-{{ forloop.counter }}" class="
+                        {% if message.tags == 'success' %}bg-green-100 border-green-300 text-green-800
+                        {% elif message.tags == 'error' %}bg-red-100 border-red-300 text-red-800
+                        {% elif message.tags == 'warning' %}bg-yellow-100 border-yellow-300 text-yellow-800
+                        {% elif message.tags == 'info' %}bg-blue-100 border-blue-300 text-blue-800
+                        {% else %}bg-gray-100 border-gray-300 text-gray-800
+                        {% endif %}
+                        border px-4 py-3 rounded-lg shadow-md transition-opacity duration-500 ease-in-out mx-auto min-w-[280px] max-w-[600px] text-center
+                    ">
+                        {{ message }}
+                        <button onclick="document.getElementById('msg-{{ forloop.counter }}').style.opacity = 0; setTimeout(() => document.getElementById('msg-{{ forloop.counter }}').remove(), 500);" class="ml-2 font-bold float-left mr-2 text-sm">&times;</button>
+                    </div>
+                    <script>
+                        setTimeout(() => {
+                            const el = document.getElementById("msg-{{ forloop.counter }}");
+                            if (el) {
+                                el.style.opacity = 0;
+                                setTimeout(() => el.remove(), 500);
+                            }
+                        }, 3000);
+                    </script>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <main class="flex-1 p-4 md:p-6 pb-24 md:pb-6 overflow-y-auto min-w-0">
+            {% block content %}
+            {% endblock %}
+        </main>
+    </div>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-lg border-t border-gray-200/80 shadow-[0_-4px_12px_-2px_rgba(0,0,0,0.08)] px-2 pb-safe">
+        <div class="flex justify-around items-center h-[72px]">
+            <!-- Dashboard Tab -->
+            <a href="{% url 'operations:dashboard' %}" class="flex flex-col items-center justify-center flex-1 py-1 transition-all duration-200 group">
+                <div class="w-14 h-8 rounded-full flex items-center justify-center transition-all duration-200 {% if active_page == 'dashboard' %}bg-indigo-50 text-indigo-600{% else %}text-gray-500 group-hover:bg-gray-100 group-hover:text-gray-700{% endif %}">
+                    <span class="material-icons text-[22px]">dashboard</span>
+                </div>
+                <span class="text-[11px] mt-1 font-semibold transition-all duration-200 {% if active_page == 'dashboard' %}text-indigo-700 font-bold{% else %}text-gray-500{% endif %}">داشبورد</span>
+            </a>
+            
+            <!-- Checkin Tab -->
+            <a href="{% url 'operations:checkin' %}" class="flex flex-col items-center justify-center flex-1 py-1 transition-all duration-200 group">
+                <div class="w-14 h-8 rounded-full flex items-center justify-center transition-all duration-200 {% if active_page == 'checkin' %}bg-indigo-50 text-indigo-600{% else %}text-gray-500 group-hover:bg-gray-100 group-hover:text-gray-700{% endif %}">
+                    <span class="material-icons text-[22px]">approval</span>
+                </div>
+                <span class="text-[11px] mt-1 font-semibold transition-all duration-200 {% if active_page == 'checkin' %}text-indigo-700 font-bold{% else %}text-gray-500{% endif %}">چک‌این</span>
+            </a>
+            
+            <!-- Events Tab -->
+            {% get_active_event as active_event %}
+            <a href="{% if active_event %}{% url 'events:detail' active_event.id %}{% else %}{% url 'events:list' %}{% endif %}" class="flex flex-col items-center justify-center flex-1 py-1 transition-all duration-200 group">
+                <div class="w-14 h-8 rounded-full flex items-center justify-center transition-all duration-200 {% if active_page == 'events' %}bg-indigo-50 text-indigo-600{% else %}text-gray-500 group-hover:bg-gray-100 group-hover:text-gray-700{% endif %}">
+                    <span class="material-icons text-[22px]">event</span>
+                </div>
+                <span class="text-[11px] mt-1 font-semibold transition-all duration-200 {% if active_page == 'events' %}text-indigo-700 font-bold{% else %}text-gray-500{% endif %}">
+                    {% if active_event %}
+                        رویداد فعال
+                    {% else %}
+                        رویدادها
+                    {% endif %}
+                </span>
+            </a>
+            
+            <!-- Persons Tab -->
+            <a href="{% url 'people:list' %}" class="flex flex-col items-center justify-center flex-1 py-1 transition-all duration-200 group">
+                <div class="w-14 h-8 rounded-full flex items-center justify-center transition-all duration-200 {% if active_page == 'persons' %}bg-indigo-50 text-indigo-600{% else %}text-gray-500 group-hover:bg-gray-100 group-hover:text-gray-700{% endif %}">
+                    <span class="material-icons text-[22px]">group</span>
+                </div>
+                <span class="text-[11px] mt-1 font-semibold transition-all duration-200 {% if active_page == 'persons' %}text-indigo-700 font-bold{% else %}text-gray-500{% endif %}">اشخاص</span>
+            </a>
+            
+            <!-- Settings Tab -->
+            <a href="{% url 'accounts:settings_general' %}" class="flex flex-col items-center justify-center flex-1 py-1 transition-all duration-200 group">
+                <div class="w-14 h-8 rounded-full flex items-center justify-center transition-all duration-200 {% if active_page == 'settings' %}bg-indigo-50 text-indigo-600{% else %}text-gray-500 group-hover:bg-gray-100 group-hover:text-gray-700{% endif %}">
+                    <span class="material-icons text-[22px]">settings</span>
+                </div>
+                <span class="text-[11px] mt-1 font-semibold transition-all duration-200 {% if active_page == 'settings' %}text-indigo-700 font-bold{% else %}text-gray-500{% endif %}">تنظیمات</span>
+            </a>
+        </div>
+    </nav>
+
+    <script type="text/javascript" src="{% static 'core/js/jalalidatepicker.min.js' %}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const submenuToggles = document.querySelectorAll('.submenu-toggle');
+
+            submenuToggles.forEach(button => {
+                button.addEventListener('click', () => {
+                    const submenuContent = button.nextElementSibling;
+                    const icon = button.querySelector('.material-icons.transform');
+
+                    if (submenuContent.style.maxHeight) {
+                        submenuContent.style.maxHeight = null;
+                        icon.classList.remove('rotate-180');
+                    } else {
+                        submenuContent.style.maxHeight = submenuContent.scrollHeight + "px";
+                        icon.classList.add('rotate-180');
+                    }
+                });
+            });
+
+            // Mobile menu drawer toggle
+            const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+            const mobileMenuClose = document.getElementById('mobile-menu-close');
+            const sidebar = document.getElementById('sidebar');
+            const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+
+            function toggleSidebar() {
+                if (sidebar.classList.contains('translate-x-full')) {
+                    sidebar.classList.remove('translate-x-full');
+                    sidebarBackdrop.classList.remove('hidden');
+                } else {
+                    sidebar.classList.add('translate-x-full');
+                    sidebarBackdrop.classList.add('hidden');
+                }
+            }
+
+            if (mobileMenuToggle) {
+                mobileMenuToggle.addEventListener('click', toggleSidebar);
+            }
+            if (mobileMenuClose) {
+                mobileMenuClose.addEventListener('click', toggleSidebar);
+            }
+            if (sidebarBackdrop) {
+                sidebarBackdrop.addEventListener('click', toggleSidebar);
+            }
+        });
+
+    {% if use_persian_digits %}
+        function convertDigitsToPersian(element) {
+            const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+            const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
+            let node;
+            while (node = walker.nextNode()) {
+                if (node.parentElement && node.parentElement.tagName !== 'SCRIPT' && node.parentElement.tagName !== 'STYLE') {
+                    node.nodeValue = node.nodeValue.replace(/\d/g, digit => persianDigits[digit]);
+                }
+            }
+        }
+
+        const observer = new MutationObserver((mutationsList) => {
+            for (const mutation of mutationsList) {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    mutation.addedNodes.forEach(newNode => {
+                        if (newNode.nodeType === Node.ELEMENT_NODE) { 
+                            convertDigitsToPersian(newNode);
+                        }
+                    });
+                }
+            }
+        });
+
+
+        document.addEventListener('DOMContentLoaded', () => {
+            convertDigitsToPersian(document.body);
+
+            observer.observe(document.body, {
+                childList: true, 
+                subtree: true 
+            });
+        });
+    {% endif %}
+    </script>
+    {% block extra_scripts %}
+    
+    {% endblock %}
+</body>
+</html>

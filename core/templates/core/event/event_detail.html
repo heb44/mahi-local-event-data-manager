@@ -1,0 +1,827 @@
+{% extends 'core/base.html' %}
+{% load custom_tags %}
+{% load jalali_filters %}
+{% block title %}رویداد {{event.name}}{% endblock %}
+
+{% block extra_styles %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+{% comment %} <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /> {% endcomment %}
+{% comment %} <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script> {% endcomment %}
+<style>
+    .modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background-color: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+      }
+      .modal.is-open {
+        display: flex; 
+    }
+      .modal-content {
+        background-color: white;
+        border-radius: 0.5rem;
+        padding: 1.5rem;
+        width: 90%;
+        max-width: 32rem;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        position: relative;
+      }
+      .modal-content .close-btn {
+        position: absolute;
+        top: 0.8rem;
+        left: 0.8rem;
+        cursor: pointer;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+      }
+      .path-container {
+        display: flex;
+        align-items: center;
+        padding: 1.5rem 3.5rem 3.5rem 3.5rem;
+        position: relative;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+        scrollbar-color: #cbd5e1 #f1f1f1;
+      }
+      .path-container::-webkit-scrollbar {
+        height: 6px;
+      }
+      .path-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+      }
+      .path-container::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 3px;
+      }
+      .path-container::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+      .checkpoint {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        flex-shrink: 0;
+        width: 2.5rem;
+        height: 2.5rem;
+      }
+      .checkpoint + .checkpoint {
+        margin-right: 3.5rem;
+      }
+      [dir="ltr"] .checkpoint + .checkpoint {
+        margin-right: 0;
+        margin-left: 3.5rem;
+      }
+      .checkpoint-circle {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        transition: transform 0.2s;
+        flex-shrink: 0;
+      }
+      .checkpoint:hover .checkpoint-circle {
+        transform: scale(1.1);
+      }
+      .checkpoint-label {
+        position: absolute;
+        top: 3rem;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.875rem;
+        color: #374151;
+        white-space: nowrap;
+        text-align: center;
+        max-width: 18ch;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .checkpoint-tooltip {
+        position: absolute;
+        background-color: #1f2937;
+        color: white;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.375rem;
+        font-size: 0.75rem;
+        white-space: pre-line;
+        z-index: 20;
+        max-width: 150px;
+        text-align: center;
+        opacity: 0;
+        visibility: hidden;
+        transition: opacity 0.2s, visibility 0.2s;
+        top: -3rem;
+        right: 50%;
+        transform: translateX(50%);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+      }
+      .checkpoint:hover .checkpoint-tooltip {
+        opacity: 1;
+        visibility: visible;
+      }
+      .connector {
+        flex: 1;
+        min-w-[2.5rem];
+        height: 2px;
+        background-color: #d1d5db;
+        flex-shrink: 0;
+        margin: 0 0.5rem;
+      }
+      .switch-container {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+      }
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 2.5rem;
+        height: 1.25rem;
+      }
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 1.25rem;
+      }
+      .slider:before {
+        position: absolute;
+        content: "";
+        height: 1rem;
+        width: 1rem;
+        left: 0.125rem;
+        bottom: 0.125rem;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+      }
+      input:checked + .slider {
+        background-color: #4f46e5;
+      }
+      input:checked + .slider:before {
+        transform: translateX(1.25rem);
+      }
+      .route-card {
+        line-height: 1.75;
+        position: relative;
+      }
+      .route-card .material-icons {
+        font-size: 1.25rem;
+        color: #4f46e5;
+      }
+      .route-card .material-icons:hover {
+        color: #6366f1;
+      }
+      .route-card .play-pause {
+        position: absolute;
+        top: 0.5rem;
+        left: 0.5rem;
+        font-size: 1.5rem;
+        color: #10b981;
+        cursor: pointer;
+      }
+      .route-card .play-pause:hover {
+        color: #059669;
+      }
+      .route-card.active {
+        background-color: #e0e7ff;
+        border: 2px solid #4f46e5;
+      }
+      .checkin-table-container {
+        max-height: 26rem; /* افزایش ارتفاع */
+        overflow-y: auto;
+        overflow-x: auto;
+        scrollbar-width: thin;
+        scrollbar-color: #a1a1aa #e5e7eb;
+      }
+      .checkin-table-container::-webkit-scrollbar {
+        width: 6px;
+      }
+      .checkin-table-container::-webkit-scrollbar-track {
+        background: #e5e7eb;
+        border-radius: 3px;
+      }
+      .checkin-table-container::-webkit-scrollbar-thumb {
+        background: #a1a1aa;
+        border-radius: 3px;
+      }
+      .status-banner {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        padding: 0.5rem;
+        border-radius: 0.5rem;
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+      .status-banner.active {
+          background-color: #dcfce7; /* Green-100 */
+          color: #166534; /* Green-800 */
+      }
+      .status-banner.inactive {
+          background-color: #f3f4f6; /* Gray-100 */
+          color: #374151; /* Gray-700 */
+      }
+      .checkin-chart {
+          position: relative;
+          width: 96px; /* 24 unit in tailwind */
+          height: 96px;
+          border-radius: 50%;
+          display: grid;
+          place-items: center;
+          background: conic-gradient(#10b981 calc(var(--success-rate) * 1%), #ef4444 0);
+      }
+      .checkin-chart::before {
+          content: "";
+          position: absolute;
+          width: 82%; /* Slightly thinner ring */
+          height: 82%;
+          background: white;
+          border-radius: 50%;
+      }
+      .checkin-total {
+          position: relative;
+          font-size: 1.75rem; /* 28px */
+          font-weight: 800;
+          color: #111827;
+      }
+      .stat-list-item {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+      }
+      .stat-label {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          font-size: 0.875rem; /* 14px */
+          color: #374151;
+          font-weight: 500;
+      }
+      .stat-value-container {
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+      }
+      .stat-value-numbers {
+          font-size: 1.125rem; /* 18px */
+          font-weight: 700;
+          color: #111827;
+      }
+      .stat-value-numbers .total {
+          font-size: 0.875rem; /* 14px */
+          font-weight: 500;
+          color: #9ca3af;
+      }
+      .progress-bar {
+          width: 5rem; /* 80px */
+          height: 4px; /* h-1 */
+          background-color: #f3f4f6; /* Gray-100 */
+          border-radius: 9999px;
+          margin-top: 0.25rem;
+          overflow: hidden; /* Ensures inner bar respects the radius */
+      }
+      .progress-bar-inner {
+          height: 100%;
+          background-color: #4f46e5;
+          border-radius: 9999px;
+      }
+      .active-path-section {
+        background: linear-gradient(135deg, #eef2f7, #ffffff);
+        border: 2px solid #4f46e5;
+        border-radius: 1rem;
+        padding: 1.5rem;
+        position: relative;
+        overflow: hidden;
+      }
+      .active-path-section:before {
+        content: '';
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(79,70,229,0.1) 0%, rgba(255,255,255,0) 70%);
+        z-index: 0;
+      }
+      .active-path-section > * {
+        position: relative;
+        z-index: 1;
+      }
+      .active-path-section .view-btn {
+        font-size: 0.75rem;
+        margin-left: 0.75rem;
+      }
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="mb-6">
+    <div class="flex flex-col gap-2 w-full">
+      <!-- Top Row: Title & Action Buttons -->
+      <div class="flex justify-between items-center w-full gap-4 min-w-0">
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+          <h1 class="text-lg sm:text-2xl font-bold text-indigo-700 truncate" title="جزئیات رویداد {{ event.name }}">جزئیات رویداد {{ event.name }}</h1>
+          <div class="relative group shrink-0">
+            <span class="material-icons text-gray-400 hover:text-gray-500 cursor-help text-base align-middle" title="{{ event.description|default:'بدون توضیح' }}">
+              info
+            </span>
+          </div>
+        </div>
+        <div class="flex gap-2 shrink-0">
+          {% if event.is_active %}
+          <a href="{% url 'operations:checkin' %}" class="flex items-center gap-1 bg-indigo-200/50 hover:bg-indigo-200 text-indigo-700 px-3 py-2 rounded-lg">
+              <span class="material-icons tooltip" data-tooltip="چک‌این">approval</span>
+          </a>
+          {% endif %}
+          <a href="{% url 'events:participants' event.id %}" class="flex items-center gap-1 bg-indigo-200/50 hover:bg-indigo-200 text-indigo-700 px-3 py-2 rounded-lg">
+              <span class="material-icons tooltip" data-tooltip="مدیریت شرکت‌کنندگان">account_box</span>
+          </a>
+          <a href="{% url 'events:schema' event.id %}" class="flex items-center gap-1 bg-indigo-200/50 hover:bg-indigo-200 text-indigo-700 px-3 py-2 rounded-lg">
+              <span class="material-icons tooltip" data-tooltip="داده‌ساختار">table_chart</span>
+          </a>
+          {% if event.is_active %}
+            <button class="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm" onclick="toggleEventStatus({{event.id}}, 'pause')">
+              <span class="material-icons text-base">pause</span> <span class="hidden sm:inline">توقف</span>
+            </button>
+          {% else %}
+            <button class="flex items-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2 rounded-lg text-sm" onclick="toggleEventStatus({{event.id}}, 'play')">
+              <span class="material-icons text-base">play_arrow</span> <span class="hidden sm:inline">شروع</span>
+            </button>
+          {% endif %}
+          <button class="flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-lg text-sm" onclick="openModal('eventEditModal')">
+            <span class="material-icons text-base">edit</span> <span class="hidden sm:inline">ویرایش</span>
+          </button>
+        </div>
+      </div>
+      <!-- Bottom Row: Subtitle Info -->
+      <p class="text-sm text-gray-500 mt-1">شناسه رویداد: {{event.id}} <span class="px-1">|</span> ایجاد: {{ event.created_at|to_jalali }}</p>
+    </div>
+</header>
+
+{% if event.is_active %}
+    {% for path_data in active_paths %}
+        <section class="active-path-section mb-6">
+            <div class="flex flex-col gap-2 mb-4 w-full">
+                <!-- Top Row: Title & Toggle Switch -->
+                <div class="flex justify-between items-center w-full gap-4 min-w-0">
+                    <div class="flex items-center gap-2 min-w-0 flex-1">
+                        <h2 class="text-lg sm:text-xl font-bold text-indigo-700 truncate" title="نمودار مسیر {{path_data.path.name}}">نمودار مسیر {{path_data.path.name}}</h2>
+                        <a href="{% url 'events:path_detail' path_data.path.id %}" class="view-btn text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5 shrink-0 text-sm">
+                            <span class="material-icons" style="font-size: 0.9rem;">visibility</span> <span class="hidden sm:inline">مشاهده</span>
+                        </a>
+                    </div>
+                    <div class="switch-container flex items-center gap-2 shrink-0">
+                        <span class="text-sm text-gray-700">گراف</span>
+                        <label class="switch">
+                            <input type="checkbox" id="viewSwitch" />
+                            <span class="slider"></span>
+                        </label>
+                        <span class="text-sm text-gray-700">نقشه</span>
+                    </div>
+                </div>
+                <!-- Bottom Row: Badges -->
+                <div class="flex flex-wrap items-center gap-2">
+                    {% if path_data.path.allow_duplicate_checkin %}
+                        <div class="flex items-center gap-1 text-xs bg-orange-100/10 text-orange-700 px-2.5 py-1 rounded-lg border border-orange-400/80 shrink-0">چک‌این تکراری: مجاز</div>
+                    {% else %}
+                        <div class="flex items-center gap-1 text-xs bg-yellow-100/10 text-yellow-700 px-2.5 py-1 rounded-lg border border-yellow-400/80 shrink-0">چک‌این تکراری: غیر مجاز</div>
+                    {% endif %}
+                    {% if path_data.path.enforce_checkpoint_order %}
+                        <div class="flex items-center gap-1 text-xs bg-emerald-100/10 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-400/80 shrink-0">رعایت ترتیب</div>
+                    {% else %}
+                        <div class="flex items-center gap-1 text-xs bg-red-100/10 text-red-700 px-2.5 py-1 rounded-lg border border-red-400/80 shrink-0">عدم رعایت ترتیب</div>
+                    {% endif %}
+                </div>
+            </div>
+            <div id="graphView" class="path-container">
+                {% if path_data.checkpoints %}
+                    {% for group in path_data.checkpoints %}
+                        {% for check_point in group %}
+                            <div class="checkpoint">
+                                <div class="checkpoint-circle" style="background-color:{{check_point.color}}"></div>
+                                <span class="checkpoint-label" title="{{check_point.name}}">{{check_point.name}}</span>
+                            </div>
+                        {% endfor %}
+                        {% if not forloop.last %}
+                            <div class="connector"></div>
+                        {% endif %}
+                    {% endfor %}
+                {% endif %}
+            </div>
+            <div id="mapView" class="hidden" style="height: 300px;"></div>
+        </section>
+    {% endfor %}
+{% endif %}
+<section class="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6">
+    <div class="md:col-span-7 bg-white rounded-xl shadow p-6 widget">
+        <div class="flex items-center gap-2 mb-4">
+            <span class="material-icons text-indigo-600">access_time</span>
+            <h3 class="text-lg font-bold">آخرین چک‌این‌ها</h3>
+        </div>
+        <div class="widget-content">
+            <div class="checkin-table-container flex-1">
+                <table class="w-full text-sm text-right min-w-[700px] md:min-w-0 md:table-fixed rounded-lg">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
+                        <tr>
+                            <th scope="col" class="px-4 py-3 w-2/5 text-right">شخص</th>
+                            <th scope="col" class="px-4 py-3 w-1/5 text-right">چک‌پوینت</th>
+                            <th scope="col" class="px-4 py-3 w-1/5 text-right">کاربر</th>
+                            <th scope="col" class="px-4 py-3 text-center w-40">وضعیت و زمان</th>
+                            <th scope="col" class="px-2 py-3 text-center w-10"><span class="sr-only">Info</span></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for checkin in recent_checkins %}
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="px-4 py-2 font-medium text-gray-900" data-label="شخص">
+                                <div class="truncate" title="{{ checkin.person.name }} {{ checkin.person.last_name }}">{{ checkin.person.name }} {{ checkin.person.last_name }}</div>
+                            </td>
+                            <td class="px-4 py-2" data-label="چک‌پوینت">
+                                <div class="truncate" title="{{ checkin.checkpoint.name }}">{{ checkin.checkpoint.name }}</div>
+                            </td>
+                            <td class="px-4 py-2" data-label="کاربر">
+                                <div class="truncate" title="{{ checkin.user.username }}">{{ checkin.user.username }}</div>
+                            </td>
+                            <td class="px-4 py-2" data-label="وضعیت و زمان">
+                                <div class="flex items-center justify-center gap-2">
+                                    {% if not checkin.is_valid %}
+                                        <span class="bg-orange-100 text-orange-800 text-xs font-medium px-2.5 py-0.5 rounded-full">ناصحیح</span>
+                                    {% elif checkin.pending %}
+                                        <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">انتظار</span>
+                                    {% elif checkin.is_approved %}
+                                        <span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">تایید</span>
+                                    {% elif not checkin.is_approved %}
+                                        <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded-full">رد</span>
+                                    {% endif %}
+                                    <span class="text-gray-500 cursor-default" title="{{ checkin.timestamp|to_jalali }}">{{ checkin.timestamp|date:"H:i" }}</span>
+                                </div>
+                            </td>
+                            <td class="px-2 py-2 text-center" data-label="توضیح">
+                                {% if checkin.description %}
+                                    <span class="material-icons text-gray-400 hover:text-indigo-500 cursor-help text-base" title="{{ checkin.description }}">info</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-gray-500">هیچ چک‌این جدیدی ثبت نشده است.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="text-center mt-2">
+                <a href="{% url 'operations:checkins' %}?event_id={{event.id}}" class="text-indigo-600 hover:underline text-sm">مشاهده همه</a>
+            </div>
+        </div>
+    </div>
+    <div class="md:col-span-5 bg-white rounded-xl shadow p-6 widget">
+        <div class="flex items-center gap-2">
+            <span class="material-icons text-indigo-600">insights</span>
+            <h3 class="text-lg font-bold">وضعیت کلی رویداد</h3>
+        </div>
+        <div class="widget-content mt-4">
+            
+            {% if event.is_active %}
+                <div class="status-banner active mb-4">
+                    <span class="material-icons text-lg">check_circle</span>
+                    <span>رویداد فعال است</span>
+                </div>
+            {% else %}
+                <div class="status-banner inactive mb-4">
+                    <span class="material-icons text-lg">pause_circle</span>
+                    <span>رویداد متوقف شده</span>
+                </div>
+            {% endif %}
+
+            <div class="grid grid-cols-5 gap-x-4 items-center h-full border rounded-xl border-gray-100 p-6">
+
+                <div class="col-span-2 flex flex-col items-center justify-center text-center pl-3">
+                    <div class="checkin-chart" style="--success-rate: {{approved_checkins_percentage}};">
+                        <span class="checkin-total">{{total_checkins_count}}</span>
+                    </div>
+                    <span class="text-sm font-semibold text-gray-700 mt-2">چک‌این</span>
+                    <div class="text-xs text-gray-500 mt-1">
+                        <span class="text-green-600 font-semibold">{{approved_checkins_count}} پذیرش</span>
+                        <span class="text-gray-600 font-semibold">/</span>
+                        <span class="text-red-600 font-semibold">{{not_approved_checkins_count}} رد</span>
+                    </div>
+                </div>
+
+                <div class="col-span-3 flex flex-col gap-y-4">
+                   <div class="stat-list-item">
+                        <div class="stat-label">
+                            <span class="material-icons text-indigo-500 text-xl">map</span>
+                            <span>مسیرها</span>
+                        </div>
+                        <div class="stat-value-container">
+                            <div class="stat-value-numbers">
+                                <span>{{ active_paths_count }}</span>
+                                <span class="total">/ {{ total_paths_count }}</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-bar-inner" style="width: {{ paths_percentage }}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-list-item">
+                        <div class="stat-label">
+                            <span class="material-icons text-indigo-500 text-xl">place</span>
+                            <span>چک‌پوینت‌ها</span>
+                        </div>
+                        <div class="stat-value-container">
+                            <div class="stat-value-numbers">
+                                <span>{{ active_checkpoints_count }}</span>
+                                <span class="total">/ {{ total_checkpoints_count }}</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-bar-inner" style="width: {{ checkpoints_percentage }}%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="stat-list-item">
+                        <div class="stat-label">
+                            <span class="material-icons text-indigo-500 text-xl">groups</span>
+                            <span>شرکت‌کنندگان</span>
+                        </div>
+                        <span class="stat-value-numbers">{{ participants_count }}</span>
+                    </div>
+                    <div class="stat-list-item">
+                        {% if event.is_active and event.last_start_time %}
+                            <div class="stat-label">
+                                <span class="material-icons text-green-500 text-xl">play_circle</span>
+                                <span>زمان شروع</span>
+                            </div>
+                            <span class="stat-value-numbers text-sm font-medium text-gray-600" title="{{ event.last_start_time|to_jalali }}">{{ event.last_start_time|date:"H:i" }}</span>
+                        {% elif not event.is_active and event.last_stop_time %}
+                            <div class="stat-label">
+                                <span class="material-icons text-red-500 text-xl">stop_circle</span>
+                                <span>زمان توقف</span>
+                            </div>
+                            <span class="stat-value-numbers text-sm font-medium text-gray-600" title="{{ event.last_start_time|to_jalali }}">{{ event.last_stop_time|date:"H:i" }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="bg-white rounded-xl shadow p-6 mb-6">
+    <div class="flex justify-between items-center mb-4">
+        <div class="flex items-center gap-2">
+            <span class="material-icons text-indigo-600">map</span>
+            <h3 class="text-lg font-bold">مسیرهای این رویداد</h3>
+        </div>
+        <button onclick="openModal('routeModal')" class="flex items-center gap-1 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">
+            <span class="material-icons">add_circle</span> <span class="hidden sm:inline">مسیر جدید</span>
+        </button>
+    </div>
+    {% with paths=active_paths|concat:inactive_paths %}
+        {% if paths %}
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full">
+            {% for path_data in paths %}
+            <div class="flex justify-between flex-col bg-gray-50 rounded-xl p-3 shadow route-card {% if path_data.path.is_active %}bg-indigo-50 border border-indigo-300{% endif %} relative" data-path-id="{{ path_data.path.id }}">
+                <div>
+                    {% if path_data.path.is_active %}
+                        <span class="z-50 play-pause material-icons text-base" data-action="pause" onclick="togglePathStatus({{ path_data.path.id }}, 'pause')">pause</span>
+                    {% else %}
+                        <span class="z-50 play-pause material-icons text-base" data-action="play" onclick="togglePathStatus({{ path_data.path.id }}, 'play')">play_arrow</span>
+                    {% endif %}
+                    <div class="tooltip" data-tooltip="شناسه:{{path_data.path.id}} | {{path_data.path.name}}"> <h3 class="text-lg font-bold {% if path_data.path.is_active %}text-indigo-700{% else %}text-gray-800{% endif %} truncate w-[15ch]">{{path_data.path.name}}</h3></div>
+                    <p class="text-xs text-gray-500">شناسه: {{path_data.path.id}} <span>|</span> ایجاد: {{ path_data.path.created_at }}</p>
+                </div>
+                {% if path_data.checkpoints %}
+                    <div class="tooltip" data-tooltip="{% for group in path_data.checkpoints %} {% for checkpoint in group %} {{ checkpoint.name }}{% if not forloop.last %} - {% endif %} {%endfor%} {% if not forloop.last %}←{% endif %} {% endfor %}">
+                        <p class="text-xs" style="padding-top: 10px;">چک‌پوینت‌ها: </p>
+                        <p class="text-xs text-gray-600 truncate w-[30ch]"  style="padding-top: 2px;">
+                            {% for group in path_data.checkpoints %} {% for checkpoint in group %} {{ checkpoint.name }}{% if not forloop.last %} - {% endif %} {%endfor%} {% if not forloop.last %}←{% endif %} {% endfor %}
+                        </p>
+                    </div>
+                {% endif %}
+                <div class="flex justify-end gap-2 mt-2">
+                    <a href="{% url 'events:path_detail' path_data.path.id %}"><span class="material-icons">visibility</span></a>
+                    <button><span class="material-icons text-red-500" onclick=confirmDelete({{path_data.path.id}},{{event.id}})>delete</span></button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="w-full text-center text-gray-500 p-6">
+            هیچ مسیری برای نمایش وجود ندارد.
+        </div>
+        {% endif %}
+    {% endwith %}
+</section>
+
+<div id="eventEditModal" class="modal ">
+    <div class="modal-content">
+        <button class="close-btn" onclick="closeModal('eventEditModal')">
+            <span class="material-icons">close</span>
+        </button>
+        <h3 class="text-xl font-bold mb-4 text-indigo-700">ویرایش رویداد</h3>
+        <form class="space-y-4" method="POST" action="{% url 'events:edit' event.id %}">
+            {% csrf_token %}
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">نام رویداد</label>
+                <input name="name" type="text" class="w-full border border-gray-300 rounded-md px-3 py-2" value="{{event.name}}">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">توضیحات</label>
+                <textarea maxlength="150" name='description' class="w-full border border-gray-300 rounded-md px-3 py-2" >{{event.description | default:""}}</textarea>
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">ذخیره</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="routeModal" class="modal">
+    <div class="modal-content">
+        <button class="close-btn" onclick="closeModal('routeModal')">
+            <span class="material-icons">close</span>
+        </button>
+        <h3 class="text-xl font-bold mb-4 text-indigo-700">افزودن مسیر</h3>
+        <form class="space-y-4" method="POST" action="{% url 'events:path_create' %}">
+            {% csrf_token %}
+            <input hidden name="event" type="text" value='{{event.id}}'/>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">نام مسیر</label>
+                <input name="name" type="text" class="w-full border border-gray-300 rounded-md px-3 py-2">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">توضیحات مسیر</label>
+                <textarea name="desc" class="w-full border border-gray-300 rounded-md px-3 py-2"></textarea>
+            </div>
+            <div class="space-y-2">
+                <label class="block text-sm font-medium text-gray-700 mb-1">گزینه‌ها</label>
+                <div class="flex items-center">
+                    <label class="flex items-center gap-2 text-sm text-gray-600">
+                        <input name="allow_duplicate_checkin" type="checkbox" class="form-checkbox" > اجازه چک‌این تکراری
+                    </label>
+                </div>
+                <div class="flex items-center">
+                    <label class="flex items-center gap-2 text-sm text-gray-600">
+                        <input name="enforce_checkpoint_order" type="checkbox" class="form-checkbox"> ترتیب چک‌پوینت‌ها مهم باشد
+                    </label>
+                </div>
+            </div>
+            <div class="flex justify-end">
+                <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">ثبت</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    // مدیریت سوئیچ گراف و نقشه
+    const viewSwitch = document.getElementById('viewSwitch');
+    const graphView = document.getElementById('graphView');
+    const mapView = document.getElementById('mapView');
+    let map = null;
+
+    if (viewSwitch) {
+        viewSwitch.addEventListener('change', () => {
+            if (viewSwitch.checked) {
+                graphView.classList.add('hidden');
+                mapView.classList.remove('hidden');
+                if (!map) {
+                    map = L.map(mapView).setView([35.6892, 51.3890], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+                    }).addTo(map);
+                    const checkpoints = [
+                        { name: 'دروازه ۱', lat: 35.6892, lng: 51.3890, color: 'red' },
+                        { name: 'دروازه ۲', lat: 35.6910, lng: 51.3910, color: 'green' },
+                        { name: 'دروازه ۳', lat: 35.6870, lng: 51.3870, color: 'blue' }
+                    ];
+                    checkpoints.forEach(cp => {
+                        L.circleMarker([cp.lat, cp.lng], {
+                            radius: 10,
+                            color: cp.color,
+                            fillColor: cp.color,
+                            fillOpacity: 0.8
+                        }).addTo(map).bindPopup(`
+                            <strong>${cp.name}</strong><br>
+                            آخرین چک‌این: نمونه<br>
+                            زمان: ۱۴۰۳/۰۲/۰۱
+                        `);
+                    });
+                }
+            } else {
+                mapView.classList.add('hidden');
+                graphView.classList.remove('hidden');
+            }
+        });
+    }
+
+    // مدیریت باز و بسته کردن مدال
+    function openModal(modalId) {
+        document.getElementById(modalId).classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal(modalId) {
+        document.getElementById(modalId).classList.remove('is-open');
+        document.body.style.overflow = 'auto';
+    }
+    
+    function toggleEventStatus(eventId, action) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        fetch("{% url 'events:toggle_status' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                event_id: eventId,
+                action: action,
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('خطا: ' + (data.error || 'عملیات ناموفق بود.'));
+            }
+        })
+        .catch(error => {
+            alert('خطا در ارسال درخواست: ' + error);
+        });
+    }
+
+    function togglePathStatus(pathId, action) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        fetch("{% url 'events:path_toggle_status' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                path_id: pathId,
+                action: action,
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.location.reload();
+            } else {
+                alert('خطا: ' + (data.error || 'عملیات ناموفق بود.'));
+            }
+        })
+        .catch(error => {
+            alert('خطا در ارسال درخواست: ' + error);
+        });
+    }
+
+    function confirmDelete(pathId, eventId) {
+        if (confirm("آیا از حذف این مسیر مطمئن هستید؟")) {
+            fetch(`/events/paths/delete/${pathId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 'event': eventId })
+            })
+            .then(response => {
+                if(response.ok) {
+                    window.location.reload();
+                } else {
+                    alert('خطا در حذف مسیر.');
+                }
+            })
+        }
+    }
+</script>
+{% endblock %}

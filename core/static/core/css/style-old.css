@@ -1,0 +1,24 @@
+body { font-family: Vazir, sans-serif; }
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+.ripple::after {
+  content: "";
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  background: rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  transition: opacity 0.3s;
+  border-radius: 9999px;
+}
+.ripple:active::after {
+  opacity: 1;
+  transition: opacity 0s;
+}
+canvas { max-height: 200px; }
+.widget-content.hidden { display: none; }
+.group:hover .group-hover\:block { display: block; }

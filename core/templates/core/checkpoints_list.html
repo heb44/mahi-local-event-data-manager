@@ -1,0 +1,578 @@
+{% extends 'core/base.html' %}
+
+{% block title %}چک پوینت ها{% endblock %}
+
+{% block extra_styles %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+
+<style>
+  .tooltip {
+    position: relative;
+  }
+  .tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: -30px;
+    right: 0;
+    background: #4b5563;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+    font-family: Vazirmatn, sans-serif;
+  }
+  /* Style for searchable dropdown */
+  input[list]::-webkit-calendar-picker-indicator { display: none; }
+  input[list] { appearance: none; -webkit-appearance: none; }
+  /* Custom toggle switch */
+  .toggle {
+    position: relative;
+    display: inline-block;
+    width: 34px;
+    height: 20px;
+  }
+  .toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #d1d5db;
+    transition: .4s;
+    border-radius: 20px;
+  }
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+  }
+  input:checked + .slider {
+    background-color: #4f46e5;
+  }
+  input:checked + .slider:before {
+    transform: translateX(14px);
+  }
+  #user-suggestions div {
+    transition: background-color 0.2s;
+  }
+  #user-suggestions div:hover {
+    background-color: #e5e7eb; /* gray-200 */
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 gap-2 min-w-0">
+  <h2 class="text-lg sm:text-2xl font-bold text-gray-800 truncate" title="چک‌پوینت‌ها">چک‌پوینت‌ها</h2>
+  <button onclick="document.getElementById('checkpointModal').classList.remove('hidden')" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl shadow transition shrink-0">
+    <span class="material-icons">add_circle</span>
+    <span class="hidden sm:inline">چک‌پوینت جدید</span>
+  </button>
+</div>
+
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 w-full">
+  {% for checkpoint in checkpoints %} {% if checkpoint.is_active %}
+    <!-- Active Checkpoint Card -->
+    <div class="fade-in relative bg-indigo-50 p-4 rounded-xl shadow-md flex flex-col gap-3 border border-indigo-300 h-fit w-full">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-2 tooltip" data-tooltip="شناسه:{{checkpoint.id}} | {{checkpoint.name}}">
+                <div class="w-3 h-3 rounded-full shrink-[0] "style="background-color: {{checkpoint.color}}"></div>
+                <h3 class="text-lg font-bold text-indigo-700 truncate w-[15ch] overflow-hidden">{{checkpoint.name}}</h3>
+            </div>
+            <div class="flex items-center gap-2">
+                <button class="text-yellow-400 hover:text-yellow-600 edit-checkpoint-btn"
+                data-id="{{ checkpoint.id }}"
+                data-name="{{ checkpoint.name }}"
+                data-path="{{ checkpoint.path_id }}"
+                data-color="{{ checkpoint.color }}"
+                data-order="{{ checkpoint.order }}"
+                data-location="{{ checkpoint.location_description }}"
+                data-latitude="{{ checkpoint.latitude }}"
+                data-longitude="{{ checkpoint.longitude }}"
+                data-user="{{ checkpoint.user.username }}"
+                data-allow-dup="{{ checkpoint.allow_duplicate_checkin|yesno:'true,false' }}"
+                data-is-mandatory="{{ checkpoint.is_mandatory|yesno:'true,false' }}">
+                
+                    <span class="material-icons text-base">edit</span>
+                </button>
+                <button class="text-red-400 hover:text-red-600">
+                    <span class="material-icons text-base delete-checkpoint-btn" data-cp-id="{{ checkpoint.id }}">delete</span>
+                </button>
+            </div>
+        </div>
+        <div class="text-sm text-gray-700 space-y-1">
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">person</span>
+                <strong>کاربر:</strong> <span>{{checkpoint.user.username | default:"تعیین نشده"}}</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">location_on</span>
+                <strong>موقعیت مکانی:</strong> <span>{{checkpoint.latitude}}, {{checkpoint.longitude}}</span>
+            </div>
+            <div class="flex items-center gap-1 " >
+              <span class="material-icons text-base">map</span>
+              <a href="{% url 'events:path_detail' checkpoint.path.id %}"> <strong>مسیر:</strong> <span>{{checkpoint.path.name}}</span></a>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">place</span>
+                <strong>محل وقوع:</strong> <span>{{checkpoint.location_description | default:"تعیین نشده"}}</span>
+            </div>
+        </div>
+        <div class="flex justify-between items-center gap-2 mt-2">
+            <div class="flex justify-between items-center gap-2">
+                <div class="w-8 h-8 flex items-center justify-center rounded-full bg-indigo-200 text-indigo-800 text-xs font-bold tooltip border border-indigo-300/50" data-tooltip="موقعیت در مسیر">{{checkpoint.order}}</div>
+                <div class="flex items-center gap-2 bg-indigo-100 px-2 py-1 rounded-md border border-indigo-300/50">
+                    {% if checkpoint.is_mandatory %}
+                    <span class="material-icons text-base text-red-500 tooltip" data-tooltip="اجباری">priority_high</span>
+                    {% else %}
+                    <span class="material-icons text-base text-gray-400 tooltip" data-tooltip="غیراجباری">priority_high</span>
+                    {% endif %}
+                    {% if checkpoint.allow_duplicate_checkin %}
+                    <span class="material-icons text-base text-green-500 tooltip" data-tooltip="اجازه ثبت تکراری">repeat</span>
+                    {% else %}
+                    <span class="material-icons text-base text-red-500 tooltip" data-tooltip="عدم اجازه ثبت تکراری">block</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="flex justify-between items-center gap-2">
+                <label class="toggle">
+                    <input type="checkbox" data-checkpoint-id="{{ checkpoint.id }}" checked />
+                    <span class="slider"></span>
+                </label>
+                <button class="flex items-center justify-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                    <span class="material-icons text-base">visibility</span>
+                    <span class="hidden sm:inline">مشاهده</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    {% else %}
+
+    <!-- Inactive Checkpoint Card -->
+    <div class="fade-in relative bg-white p-4 rounded-xl shadow-md flex flex-col gap-3 border border-gray-200 h-fit w-full">
+        <div class="flex justify-between items-center">
+            <div class="flex items-center gap-2 tooltip" data-tooltip="شناسه:{{checkpoint.id}} | {{checkpoint.name}}">
+                <div class="w-3 h-3 rounded-full shrink-[0]" style="background-color: {{checkpoint.color}}"></div>
+                <h3 class="text-lg font-bold text-gray-800 truncate w-[15ch] overflow-hidden">{{checkpoint.name}}</h3>
+            </div>
+            <div class="flex items-center gap-2">
+                <button class="text-yellow-400 hover:text-yellow-600 edit-checkpoint-btn"
+                data-id="{{ checkpoint.id }}"
+                data-name="{{ checkpoint.name }}"
+                data-path="{{ checkpoint.path_id }}"
+                data-color="{{ checkpoint.color }}"
+                data-order="{{ checkpoint.order }}"
+                data-location="{{ checkpoint.location_description }}"
+                data-latitude="{{ checkpoint.latitude }}"
+                data-longitude="{{ checkpoint.longitude }}"
+                data-user="{{ checkpoint.user.username }}"
+                data-allow-dup="{{ checkpoint.allow_duplicate_checkin|yesno:'true,false' }}"
+                data-is-mandatory="{{ checkpoint.is_mandatory|yesno:'true,false' }}">
+                    <span class="material-icons text-base">edit</span>
+                </button>
+                <button class="text-red-500 hover:text-red-700">
+                    <span class="material-icons text-base delete-checkpoint-btn" data-cp-id="{{ checkpoint.id }}">delete</span>
+                </button>
+            </div>
+        </div>
+        <div class="text-sm text-gray-600 space-y-1">
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">person</span>
+                <strong>کاربر:</strong> <span>{{checkpoint.user.username | default:"تعیین نشده" }}</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">location_on</span>
+                <strong>موقعیت مکانی:</strong> <span>{{checkpoint.latitude}}, {{checkpoint.longitude}}</span>
+            </div>
+            <div class="flex items-center gap-1 " >
+              <span class="material-icons text-base">map</span>
+              <a href="{% url 'events:path_detail' checkpoint.path.id %}"> <strong>مسیر:</strong> <span>{{checkpoint.path.name}}</span></a>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">place</span>
+                <strong>محل وقوع:</strong> <span>{{checkpoint.location_description | default:"تعیین نشده"}}</span>
+            </div>
+        </div>
+        <div class="flex justify-between items-center gap-2 mt-2">
+            <div class="flex justify-between items-center gap-2">
+                <div class="w-8 h-8 flex items-center justify-center rounded-full bg-gray-200/70 text-gray-700 text-xs border border-gray-300/50 font-bold tooltip" data-tooltip="موقعیت در مسیر">{{checkpoint.order}}</div>
+                <div class="flex items-center gap-2 bg-gray-200/70 px-2 py-1 rounded-md border border-gray-300/50">
+                    {% if checkpoint.is_mandatory %}
+                    <span class="material-icons text-base text-red-500 tooltip" data-tooltip="اجباری">priority_high</span>
+                    {% else %}
+                    <span class="material-icons text-base text-gray-400 tooltip" data-tooltip="غیراجباری">priority_high</span>
+                    {% endif %}
+                    {% if checkpoint.allow_duplicate_checkin %}
+                    <span class="material-icons text-base text-green-500 tooltip" data-tooltip="اجازه ثبت تکراری">repeat</span>
+                    {% else %}
+                    <span class="material-icons text-base text-red-500 tooltip" data-tooltip="عدم اجازه ثبت تکراری">block</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="flex justify-between items-center gap-2">
+                <label class="toggle">
+                    <input type="checkbox" data-checkpoint-id="{{ checkpoint.id }}" />
+                    <span class="slider"></span>
+                </label>
+                <button class="flex items-center justify-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                    <span class="material-icons text-base">visibility</span>
+                    <span class="hidden sm:inline">مشاهده</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    {% endfor %} 
+  
+</div>
+
+<!-- Modal for Add Checkpoint -->
+<div id="checkpointModal" class="hidden fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex justify-center items-center z-50 ">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative max-h-[600px] overflow-y-auto">
+    <button onclick="document.getElementById('checkpointModal').classList.add('hidden')" class="absolute top-2 left-2 text-gray-400 hover:text-gray-600">
+      <span class="material-icons">close</span>
+    </button>
+    <h3 class="text-xl font-bold mb-4 text-indigo-700">افزودن چک‌پوینت جدید</h3>
+    <form class="space-y-4" id="checkpointForm" method="POST" action="{% url 'events:checkpoint_create' %}">
+      {% csrf_token %}
+      <div>
+        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">نام</label>
+        <input type="text" id="name" name="name" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="مثال: دروازه اصلی">
+      </div>
+      <div>
+        <label for="path" class="block text-sm font-medium text-gray-700 mb-1">مسیر</label>
+        <input list="paths" autocomplete="off" id="path" name="path" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="جستجو کنید...">
+        <datalist id="paths">
+          {% for path in paths %}
+          <option value="{{path.id}}">{{path.name}}</option>
+          {% endfor %}
+        </datalist>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="color" class="block text-sm font-medium text-gray-700 mb-1">رنگ</label>
+          <input type="color" id="color" name="color" value="#000000" class="w-full h-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+        </div>
+        <div>
+          <label for="order" class="block text-sm font-medium text-gray-700 mb-1">ترتیب</label>
+          <input type="number" id="order" name="order" min="1" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="مثال: 1">
+        </div>
+      </div>
+      <div>
+        <label for="location_description" class="block text-sm font-medium text-gray-700 mb-1">محل وقوع</label>
+        <input type="text" id="location" name="location_description" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="مثال: دروازه اصلی">
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="latitude" class="block text-sm font-medium text-gray-700 mb-1">عرض جغرافیایی</label>
+          <input type="number" id="latitude" name="latitude" step="any" min="-90" max="90" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="مثال: 35.6892">
+        </div>
+        <div>
+          <label for="longitude" class="block text-sm font-medium text-gray-700 mb-1">طول جغرافیایی</label>
+          <input type="number" id="longitude" name="longitude" step="any" min="-180" max="180" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="مثال: 51.3890">
+        </div>
+      </div>
+      <div class="relative">
+        <label for="user" class="block text-sm font-medium text-gray-700 mb-1">کاربر</label>
+        <input type="text" id="user" name="user" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="نام کاربر را تایپ کنید...">
+        <div id="user-suggestions" class="absolute w-full bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto z-50 hidden"></div>
+      </div>
+      <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">گزینه‌ها</label>
+              <div class="flex items-center">
+                <label class="flex items-center gap-2 text-sm text-gray-600">
+                <input name="allow_dup" type="checkbox" class="form-checkbox" > اجازه چک‌این تکراری
+                </label>
+              </div>
+              <div class="flex items-center">
+                <label class="flex items-center gap-2 text-sm text-gray-600">
+                <input name="is_mandatory" type="checkbox" class="form-checkbox"> اجباری باشد 
+                </label>
+              </div>
+        </div>
+      <div class="flex justify-end">
+        <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 shadow">ثبت</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal for Edit Checkpoint -->
+<div id="editCheckpointModal" class="hidden fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex justify-center items-center z-50 ">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative max-h-[600px] overflow-y-auto">
+    <button onclick="document.getElementById('editCheckpointModal').classList.add('hidden')" class="absolute top-2 left-2 text-gray-400 hover:text-gray-600">
+      <span class="material-icons">close</span>
+    </button>
+    <h3 class="text-xl font-bold mb-4 text-indigo-700">ویرایش چک‌پوینت</h3>
+    <form class="space-y-4" id="editCheckpointForm" method="POST" action="">
+      {% csrf_token %}
+      <div>
+        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">نام</label>
+        <input type="text" id="name" name="name" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="مثال: دروازه اصلی">
+      </div>
+      <div>
+        <label for="path" class="block text-sm font-medium text-gray-700 mb-1">مسیر</label>
+        <input list="paths" id="path" name="path" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="جستجو کنید...">
+        <datalist id="paths">
+          {% for path in paths %}
+          <option value="{{path_id}}">{{path.name}}</option>
+          {% endfor %}
+        </datalist>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="color" class="block text-sm font-medium text-gray-700 mb-1">رنگ</label>
+          <input type="color" id="color" name="color" value="#000000" class="w-full h-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+        </div>
+        <div>
+          <label for="order" class="block text-sm font-medium text-gray-700 mb-1">ترتیب</label>
+          <input type="number" id="order" name="order" min="1" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="مثال: 1">
+        </div>
+      </div>
+      <div>
+        <label for="location_description" class="block text-sm font-medium text-gray-700 mb-1">محل وقوع</label>
+        <input type="text" id="location_description" name="location" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="مثال: دروازه اصلی">
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="latitude" class="block text-sm font-medium text-gray-700 mb-1">عرض جغرافیایی</label>
+          <input type="number" id="latitude" name="latitude" step="any" min="-90" max="90" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="مثال: 35.6892">
+        </div>
+        <div>
+          <label for="longitude" class="block text-sm font-medium text-gray-700 mb-1">طول جغرافیایی</label>
+          <input type="number" id="longitude" name="longitude" step="any" min="-180" max="180" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="مثال: 51.3890">
+        </div>
+      </div>
+      <div class="relative">
+        <label for="user" class="block text-sm font-medium text-gray-700 mb-1">کاربر</label>
+        <input type="text" id="user" name="user" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="نام کاربر را تایپ کنید...">
+        <div id="user-suggestions" class="absolute w-full bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto z-50 hidden"></div>
+      </div>
+      <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">گزینه‌ها</label>
+              <div class="flex items-center">
+                <label class="flex items-center gap-2 text-sm text-gray-600">
+                <input name="allow_duplicate_checkin" type="checkbox" class="form-checkbox" > اجازه چک‌این تکراری
+                </label>
+              </div>
+              <div class="flex items-center">
+                <label class="flex items-center gap-2 text-sm text-gray-600">
+                <input name="is_mandatory" type="checkbox" class="form-checkbox"> اجباری باشد 
+                </label>
+              </div>
+        </div>
+      <div class="flex justify-end">
+        <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 shadow">ثبت</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  function setupAutocomplete(input, suggestionsDiv) {
+    const fetchSuggestions = debounce(async function(term) {
+      if (term.length < 2) {
+        suggestionsDiv.innerHTML = '';
+        suggestionsDiv.classList.add('hidden');
+        return;
+      }
+
+      try {
+        const response = await fetch(`{% url 'accounts:user_autocomplete' %}?term=${encodeURIComponent(term)}`);
+        const users = await response.json();
+
+        suggestionsDiv.innerHTML = '';
+        if (users.length === 0) {
+          suggestionsDiv.classList.add('hidden');
+          return;
+        }
+
+        users.forEach(user => {
+          const div = document.createElement('div');
+          div.className = 'px-3 py-2 hover:bg-gray-100 cursor-pointer';
+          div.textContent = user.label;
+          div.addEventListener('click', () => {
+            input.value = user.value;
+            suggestionsDiv.innerHTML = '';
+            suggestionsDiv.classList.add('hidden');
+          });
+          suggestionsDiv.appendChild(div);
+        });
+        suggestionsDiv.classList.remove('hidden');
+      } catch (error) {
+        console.error('Error fetching suggestions:', error);
+        suggestionsDiv.innerHTML = '';
+        suggestionsDiv.classList.add('hidden');
+      }
+    }, 300);
+
+    input.addEventListener('input', (e) => fetchSuggestions(e.target.value));
+    input.addEventListener('focus', (e) => {
+      if (e.target.value.length >= 2) fetchSuggestions(e.target.value);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!input.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+        suggestionsDiv.classList.add('hidden');
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    // تنظیم autocomplete برای مدال افزودن
+    const addUserInput = document.querySelector('#checkpointModal #user');
+    const addSuggestionsDiv = document.querySelector('#checkpointModal #user-suggestions');
+    if (addUserInput && addSuggestionsDiv) {
+      setupAutocomplete(addUserInput, addSuggestionsDiv);
+    }
+
+    // تنظیم autocomplete برای مدال ویرایش
+    const editUserInput = document.querySelector('#editCheckpointModal #user');
+    const editSuggestionsDiv = document.querySelector('#editCheckpointModal #user-suggestions');
+    if (editUserInput && editSuggestionsDiv) {
+      setupAutocomplete(editUserInput, editSuggestionsDiv);
+    }
+
+    // کد مربوط به toggle
+const checkboxes = document.querySelectorAll('.toggle input[type="checkbox"]');
+checkboxes.forEach(checkbox => {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = `{% url 'events:checkpoint_toggle_status' %}`;
+  form.style.display = 'none';
+
+  // 1. CSRF Token
+  const csrfInput = document.createElement('input');
+  csrfInput.type = 'hidden';
+  csrfInput.name = 'csrfmiddlewaretoken';
+  csrfInput.value = getCsrfToken();
+  form.appendChild(csrfInput);
+
+  // 2. ID Input
+  const idInput = document.createElement('input');
+  idInput.type = 'hidden';
+  idInput.name = 'id';
+  idInput.value = checkbox.dataset.checkpointId;
+  form.appendChild(idInput);
+
+  // 3. Active Input (ساخت اولیه)
+  const activeInput = document.createElement('input');
+  activeInput.type = 'hidden';
+  activeInput.name = 'active';
+  // مقداردهی اولیه بر اساس وضعیت فعلی چک‌باکس در لود صفحه
+  activeInput.value = checkbox.checked ? 'true' : 'false'; 
+  form.appendChild(activeInput);
+
+  // 4. Origin Input
+  const originInput = document.createElement('input');
+  originInput.type = 'hidden';
+  originInput.name = 'origin';
+  // فرض بر این است که این ویو برای لیست چک‌پوینت‌هاست. اگر در صفحه جزئیات هستید مقدار را detail بگذارید
+  originInput.value = 'list'; 
+  form.appendChild(originInput);
+
+  document.body.appendChild(form);
+
+  // تغییر رویداد به جای حذف المنت، فقط Value را آپدیت می‌کنیم
+  checkbox.addEventListener('change', function () {
+    activeInput.value = this.checked ? 'true' : 'false';
+    form.submit();
+  });
+});
+
+    // کد مربوط به حذف
+    const deleteButtons = document.querySelectorAll('.delete-checkpoint-btn');
+    deleteButtons.forEach(button => {
+      button.addEventListener('click', function () {
+        const confirmed = confirm("آیا از حذف این چک‌پوینت مطمئن هستید؟");
+        if (!confirmed) return;
+
+        const cpId = button.dataset.cpId;
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/events/checkpoints/delete/${cpId}/`;
+
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = getCsrfToken();
+        form.appendChild(csrfInput);
+
+        document.body.appendChild(form);
+        form.submit();
+      });
+    });
+
+    // کد مربوط به ویرایش
+    const editButtons = document.querySelectorAll('.edit-checkpoint-btn');
+    editButtons.forEach(button => {
+      button.addEventListener('click', function () {
+        const modal = document.getElementById('editCheckpointModal');
+        modal.classList.remove('hidden');
+
+        const form = document.getElementById('editCheckpointForm');
+        if (!form) {
+          console.error('Form with ID editCheckpointForm not found');
+          return;
+        }
+
+        form.querySelector('#name').value = button.dataset.name || '';
+        form.querySelector('#path').value = button.dataset.path || '';
+        form.querySelector('#color').value = button.dataset.color || '#000000';
+        form.querySelector('#order').value = button.dataset.order || '';
+        form.querySelector('#location').value = button.dataset.location || '';
+        form.querySelector('#latitude').value = button.dataset.latitude || '';
+        form.querySelector('#longitude').value = button.dataset.longitude || '';
+        form.querySelector('#user').value = button.dataset.user || '';
+        form.querySelector('input[name="allow_duplicate_checkin"]').checked = button.dataset.allowDuplicateCheckin === 'true';
+        form.querySelector('input[name="is_mandatory"]').checked = button.dataset.isMandatory === 'true';
+
+        form.action = `/events/checkpoints/edit/${button.dataset.id}/`;
+
+        let idInput = form.querySelector('#edit-checkpoint-id');
+        if (!idInput) {
+          idInput = document.createElement('input');
+          idInput.type = 'hidden';
+          idInput.name = 'checkpoint_id';
+          idInput.id = 'edit-checkpoint-id';
+          form.appendChild(idInput);
+        }
+        idInput.value = button.dataset.id;
+      });
+    });
+
+    function getCsrfToken() {
+      const metaTag = document.querySelector('meta[name="csrf-token"]');
+      return metaTag ? metaTag.getAttribute('content') : '';
+    }
+  });
+</script>
+{% endblock %}

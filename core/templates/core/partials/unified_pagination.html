@@ -1,0 +1,41 @@
+<!-- Unified Pagination Partial -->
+{% if page_obj and page_obj.paginator.num_pages > 1 %}
+<div class="mt-4 flex flex-col sm:flex-row justify-between items-center gap-4 fade-in">
+  <div class="text-sm text-gray-600">
+    نمایش {{ page_obj.start_index }} تا {{ page_obj.end_index }} از {{ page_obj.paginator.count }} نتیجه
+  </div>
+  
+  <div class="flex gap-1.5 items-center overflow-x-auto max-w-full pb-1 scrollbar-thin">
+    {% if page_obj.has_previous %}
+      <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if metadata_key %}&mk={{ metadata_key }}{% endif %}{% if metadata_value %}&mv={{ metadata_value }}{% endif %}{% if search_fields %}&sf={{ search_fields }}{% endif %}{% if order_by %}&ob={{ order_by }}{% endif %}{% if direction %}&dir={{ direction }}{% endif %}" 
+         class="px-3 py-1 rounded-lg bg-gray-50 border border-gray-300 text-indigo-600 hover:bg-indigo-100 hover:border-indigo-600 transition text-sm font-semibold whitespace-nowrap">قبلی</a>
+    {% else %}
+      <button class="px-3 py-1 rounded-lg bg-gray-50 border border-gray-300 text-gray-400 pointer-events-none text-sm whitespace-nowrap">قبلی</button>
+    {% endif %}
+    
+    {% for num in page_obj.paginator.page_range %}
+      {% if num == page_obj.number %}
+        <span class="px-3 py-1 rounded-lg border border-indigo-600 bg-indigo-600 text-white text-sm font-bold whitespace-nowrap">{{ num }}</span>
+      {% else %}
+        {% if num > page_obj.number|add:"-3" and num < page_obj.number|add:"3" %}
+          <a href="?page={{ num }}{% if search_query %}&q={{ search_query }}{% endif %}{% if metadata_key %}&mk={{ metadata_key }}{% endif %}{% if metadata_value %}&mv={{ metadata_value }}{% endif %}{% if search_fields %}&sf={{ search_fields }}{% endif %}{% if order_by %}&ob={{ order_by }}{% endif %}{% if direction %}&dir={{ direction }}{% endif %}" 
+             class="px-3 py-1 rounded-lg bg-gray-50 border border-gray-300 text-indigo-600 hover:bg-indigo-100 hover:border-indigo-600 transition text-sm whitespace-nowrap">{{ num }}</a>
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+      
+    {% if page_obj.has_next %}
+      <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if metadata_key %}&mk={{ metadata_key }}{% endif %}{% if metadata_value %}&mv={{ metadata_value }}{% endif %}{% if search_fields %}&sf={{ search_fields }}{% endif %}{% if order_by %}&ob={{ order_by }}{% endif %}{% if direction %}&dir={{ direction }}{% endif %}" 
+         class="px-3 py-1 rounded-lg bg-gray-50 border border-gray-300 text-indigo-600 hover:bg-indigo-100 hover:border-indigo-600 transition text-sm font-semibold whitespace-nowrap">بعدی</a>
+    {% else %}
+      <button class="px-3 py-1 rounded-lg bg-gray-50 border border-gray-300 text-gray-400 pointer-events-none text-sm whitespace-nowrap">بعدی</button>
+    {% endif %}
+  </div>
+</div>
+{% elif page_obj %}
+<div class="mt-4 flex justify-between items-center fade-in">
+  <div class="text-sm text-gray-600">
+    نمایش {{ page_obj.start_index }} تا {{ page_obj.end_index }} از {{ page_obj.paginator.count }} نتیجه
+  </div>
+</div>
+{% endif %}

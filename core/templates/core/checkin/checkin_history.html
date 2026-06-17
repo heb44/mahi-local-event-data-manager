@@ -1,0 +1,370 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% load jalali_filters %}
+{% block title %}سوابق چک‌این {{ person.name }} {{ person.last_name }} {% endblock %}
+
+{% block extra_styles %}
+<style>
+/* استایل‌های اختصاصی برای نمایش گراف مسیر */
+.checkpoint-node {
+    position: relative; /* این برای موقعیت‌دهی تولتیپ ضروری است */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 100px; /* حداقل عرض برای هر نود */
+    text-align: center;
+}
+.checkpoint-circle {
+    width: 2.5rem; /* 40px */
+    height: 2.5rem; /* 40px */
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.25rem;
+    border: 3px solid white;
+    transition: transform 0.2s ease;
+}
+.checkpoint-node:hover .checkpoint-circle {
+    transform: scale(1.1);
+}
+.checkpoint-connector {
+    flex-grow: 1;
+    height: 3px;
+    background: linear-gradient(to right, #a5b4fc, #6366f1);
+    min-width: 50px;
+}
+
+/* استایل جدید و بهبود یافته برای تولتیپ */
+.shared-tooltip {
+    position: fixed;
+    background-color: #1f2937; /* رنگ پس‌زمینه تیره‌تر */
+    color: white;
+    padding: 0.75rem 1rem; /* پدینگ بیشتر */
+    border-radius: 0.5rem; /* گردی بیشتر گوشه‌ها */
+    font-size: 0.8rem; /* فونت کمی کوچک‌تر و خواناتر */
+    white-space: pre-line; /* برای شناسایی \n و شکستن خطوط */
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none; /* برای اینکه مانع هاور شدن نشود */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); /* سایه بهتر */
+    max-width: 220px;
+    text-align: right;
+}
+
+/* ایجاد فلش کوچک در پایین تولتیپ با استفاده از شبه‌عنصر */
+.shared-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%; /* در پایین تولتیپ */
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 6px;
+    border-style: solid;
+    border-color: #1f2937 transparent transparent transparent;
+}
+</style>
+{% endblock %}
+
+
+{% block content %}
+<div class="flex justify-between items-center mb-6">
+    <h2 class="text-2xl font-semibold text-gray-900">
+        سوابق چک‌این برای <span class="font-normal text-indigo-600">{{ person.name }} {{ person.last_name }}</span>
+    </h2>
+
+    <div class="flex items-center gap-2 p-1 bg-gray-200 rounded-lg">
+        <a href="?view=graph" class="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm transition
+            {% if view == 'graph' %}bg-indigo-600 text-white shadow{% else %}text-gray-700 hover:bg-white{% endif %}">
+            <span class="material-icons text-base">insights</span>
+            نموداری
+        </a>
+        <a href="?view=table" class="flex items-center gap-2 px-4 py-1.5 rounded-md text-sm transition
+            {% if view == 'table' %}bg-indigo-600 text-white shadow{% else %}text-gray-700 hover:bg-white{% endif %}">
+            <span class="material-icons text-base">table_view</span>
+            جدولی
+        </a>
+    </div>
+</div>
+
+{% if view == 'graph' %}
+    {# ======================== حالت نمایش نموداری ======================== #}
+    <div class="space-y-6">
+    
+    {% for event_data in event_checkins %}
+        <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-6">
+            <div class="mb-4">
+                <h3 class="text-lg font-bold text-indigo-800">{{ event_data.event.name }}</h3>
+                <p class="text-sm text-gray-500">
+                    اولین چک‌این: {{ event_data.first_checkin_time|to_jalali:'%Y/%m/%d %H:%M' }} | 
+                    آخرین چک‌این: {{ event_data.last_checkin_time|to_jalali:'%Y/%m/%d %H:%M' }}
+                </p>
+            </div>
+
+            <div class="overflow-x-auto overflow-y-visible py-4">
+                <div class="flex items-center min-w-max">
+                    {% for checkin in event_data.checkins %}
+                        <div class="checkpoint-node" data-tooltip-content="زمان: {{ checkin.timestamp|to_jalali:'%Y/%m/%d %H:%M' }}\nکاربر: {{ checkin.user.username|default:'-' }}\nوضعیت: {% if checkin.is_valid %}صحیح{% else %}ناصحیح{% endif %}\nنتیجه: {% if not checkin.is_valid %}-{% elif checkin.pending %}در انتظار{% elif checkin.is_approved %}پذیرفته شده{% else %}رد شده{% endif %}">
+                            <div class="checkpoint-circle" 
+                                style="
+                                    background-color: {{ checkin.checkpoint.color|default:'#4f46e5' }}; 
+                                    box-shadow: 0 0 0 3px {% if not checkin.is_valid %}#cccccc
+                                    {% elif checkin.is_approved %}#29cf50
+                                    {% elif checkin.pending %}#eab308
+                                    {% else %}#bd2c19
+                                    {% endif %};
+                                ">
+                                {% if not checkin.is_valid %}
+                                    <span class="material-icons">unpublished</span>
+                                {% elif not checkin.is_approved %}
+                                    <span class="material-icons">close</span>
+                                {% elif checkin.is_approved %}
+                                    <span class="material-icons">check</span>
+                                {% else %}
+                                    <span class="material-icons">hourglass_empty</span>
+                                {% endif %}
+                            </div>
+                            <span class="mt-2 text-sm font-medium text-gray-800">{{ checkin.checkpoint.name }}</span>
+                            <span class="text-xs text-gray-500" dir="ltr">{{ checkin.timestamp|date:"H:i:s" }}</span>
+                        </div>
+
+                        {% if not forloop.last %}
+                            <div class="checkpoint-connector"></div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="text-center text-gray-500 py-10 bg-white rounded-lg shadow border">
+            <p>هیچ چک‌اینی برای این شخص یافت نشد.</p>
+        </div>
+    {% endfor %}
+    </div>
+
+{% else %}
+    {# ======================== حالت نمایش جدولی ======================== #}
+    <div class="flex justify-between items-center mb-4">
+        <div class="flex gap-2 items-center min-w-[300px]">
+            <select id="bulkAction" class="text-sm bg-gray-50 border border-gray-300 rounded-lg p-2 w-3/5">
+                <option value="">انتخاب عملیات</option>
+                <option value="delete">حذف</option>
+            </select>
+            <button onclick="executeBulkAction()" class="bg-indigo-600 text-white rounded-lg p-2 hover:bg-indigo-700 transition w-2/5">اجرای عملیات</button>
+        </div>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-x-auto">
+        <table class="w-full text-right border-collapse responsive-table">
+            <thead class="bg-indigo-100 text-indigo-800">
+                <tr>
+                    <th class="p-3 text-sm font-semibold text-center border-b border-l border-indigo-200 w-12"><input type="checkbox" onchange="toggleSelectAll(this)"></th>
+                    <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200 w-14">ردیف</th>
+                    <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200 w-16">شناسه</th>
+                    <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">رویداد</th>
+                    <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">چک‌پوینت</th>
+                    <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">کاربر ثبت‌کننده</th>
+                    <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">زمان</th>
+                    <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">وضعیت</th>
+                    <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">نتیجه</th>
+                    <th class="p-3 text-sm font-semibold text-center border-b border-r border-indigo-200">عملیات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for checkin in page_obj %}
+                <tr class="{% cycle 'bg-gray-100' 'bg-white' %} hover:bg-indigo-50 transition">
+                    <td class="p-2 text-center border-gray-200 border-b border-l bg-indigo-100/50 checkbox-cell"><input type="checkbox" name="selected_ids" value="{{ checkin.id }}" class="item-checkbox"></td>
+                    <td class="p-2 text-sm text-gray-700 border-gray-200 text-center border-b border-x" data-label="ردیف">{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                    <td class="p-2 text-sm text-gray-700 border-gray-200 text-center border-b border-x" data-label="شناسه">{{ checkin.id }}</td>
+                    <td class="p-2 text-sm font-semibold border-gray-200 text-gray-800 text-center border-b border-x" data-label="رویداد">{{ checkin.checkpoint.path.event.name|default:"-" }}</td>
+                    <td class="p-2 text-sm text-gray-700 border-gray-200 text-center border-b border-x" data-label="چک‌پوینت">{{ checkin.checkpoint.name|default:"-" }}</td>
+                    <td class="p-2 text-sm text-gray-700 border-gray-200 text-center border-b border-x" data-label="کاربر ثبت‌کننده">{{ checkin.user.username|default:"-" }}</td>
+                    <td class="p-2 text-sm text-gray-700 border-gray-200 text-center border-b border-x whitespace-nowrap" dir="ltr" data-label="زمان">{{ checkin.timestamp|to_jalali:'%Y/%m/%d %H:%M' }}</td>
+                    <td class="p-2 text-sm text-center border-gray-200 border-b border-x" data-label="وضعیت">
+                        {% if checkin.is_valid %}<span class="inline-flex items-center gap-1 bg-sky-100 text-sky-700 px-2 py-1 rounded-full text-xs font-semibold"><span class="material-icons text-base">check_circle</span> صحیح</span>
+                        {% else %}<span class="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-semibold"><span class="material-icons text-base">cancel</span> ناصحیح</span>{% endif %}
+                    </td>
+                    <td class="p-2 text-sm text-center border-gray-200 border-b border-x whitespace-nowrap" data-label="نتیجه">
+                        {% if not checkin.is_valid %}<span>-</span>
+                        {% elif checkin.pending %}<span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-semibold"><span class="material-icons text-base">hourglass_empty</span> در انتظار</span>
+                        {% elif checkin.is_approved %}<span class="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-semibold"><span class="material-icons text-base">thumb_up</span> پذیرفته شده</span>
+                        {% else %}<span class="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-semibold "><span class="material-icons text-base">thumb_down</span> رد شده</span>
+                        {% endif %}
+                    </td>
+                    <td class="p-2 text-center border-gray-200 border-b border-r" data-label="عملیات">
+                        <div class="flex gap-3 justify-center items-center">
+                            <button onclick="confirmDelete(this, {{ checkin.id }})" data-delete-url="{% url 'operations:checkin_delete' checkin.id %}" class="text-red-500 hover:text-red-700" title="حذف">
+                                <span class="material-icons text-lg">delete</span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="10" class="text-center text-gray-500 py-6">هیچ چک‌اینی برای این شخص یافت نشد.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    {% with all_params=request.GET.urlencode %}
+    <div class="mt-4 flex justify-between items-center">
+        <div class="text-sm text-gray-600">
+            نمایش {{ page_obj.start_index }} تا {{ page_obj.end_index }} از {{ paginator.count }} نتیجه
+        </div>
+        {% if paginator.num_pages > 1 %}
+        <div class="flex gap-2 items-center">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}&{{ all_params|cut:'page' }}" class="px-3 py-1 rounded-lg bg-gray-50 border border-gray-300 text-indigo-600 hover:bg-indigo-100">قبلی</a>
+            {% endif %}
+            
+            {% for num in paginator.page_range %}
+                <a href="?page={{ num }}&{{ all_params|cut:'page' }}" class="px-3 py-1 rounded-lg border {% if page_obj.number == num %}bg-indigo-600 text-white border-indigo-600{% else %}bg-gray-50 text-indigo-600 hover:bg-indigo-100{% endif %}">{{ num }}</a>
+            {% endfor %}
+    
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}&{{ all_params|cut:'page' }}" class="px-3 py-1 rounded-lg bg-gray-50 border border-gray-300 text-indigo-600 hover:bg-indigo-100">بعدی</a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    {% endwith %}
+
+{% endif %}
+
+<div id="shared-tooltip" class="shared-tooltip"></div>
+
+{% endblock %}
+
+
+{% block extra_scripts %}
+<script>
+function toggleSelectAll(selectAllCheckbox) {
+    const checkboxes = document.querySelectorAll('.item-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = selectAllCheckbox.checked;
+    });
+}
+
+function confirmDelete(buttonElement, checkinId) {
+    if (confirm(`آیا از حذف چک‌این با شناسه ${checkinId} مطمئن هستید؟`)) {
+        const url = buttonElement.getAttribute('data-delete-url');
+        const csrfToken = '{{ csrf_token }}';
+        
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                buttonElement.closest('tr').remove();
+            } else {
+                alert('خطا در حذف: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('یک خطای غیرمنتظره در ارتباط با سرور رخ داد.');
+        });
+    }
+}
+
+function executeBulkAction() {
+    const action = document.getElementById('bulkAction').value;
+    if (!action) {
+        alert('لطفاً یک عملیات را انتخاب کنید.');
+        return;
+    }
+
+    const selectedIds = Array.from(document.querySelectorAll('.item-checkbox:checked')).map(cb => cb.value);
+    if (selectedIds.length === 0) {
+        alert('لطفاً حداقل یک مورد را انتخاب کنید.');
+        return;
+    }
+
+    if (action === 'delete') {
+        if (confirm(`آیا از حذف ${selectedIds.length} مورد انتخاب شده مطمئن هستید؟`)) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = "{% url 'operations:checkin_bulk_action' %}";
+            
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = '{{ csrf_token }}';
+            form.appendChild(csrfInput);
+            
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = action;
+            form.appendChild(actionInput);
+            
+            selectedIds.forEach(id => {
+                const idInput = document.createElement('input');
+                idInput.type = 'hidden';
+                idInput.name = 'selected_ids';
+                idInput.value = id;
+                form.appendChild(idInput);
+            });
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+}
+
+
+// ==================== منطق جدید برای تولتیپ (با اصلاح) ====================
+document.addEventListener('DOMContentLoaded', function() {
+    const tooltip = document.getElementById('shared-tooltip');
+    if (!tooltip) return;
+
+    tooltip.style.opacity = '0';
+    tooltip.style.visibility = 'hidden';
+    
+    const nodes = document.querySelectorAll('.checkpoint-node');
+
+    nodes.forEach(node => {
+        node.addEventListener('mouseover', (event) => {
+            const content = node.getAttribute('data-tooltip-content');
+            if (!content) return;
+
+            // 1. محتوای تولتیپ را تنظیم کن (با اصلاح برای \n)
+            tooltip.textContent = content.replace(/\\n/g, '\n');
+
+            // 2. موقعیت تولتیپ را محاسبه کن
+            tooltip.style.opacity = '1';
+            tooltip.style.visibility = 'visible';
+            const nodeRect = node.getBoundingClientRect();
+            const tooltipRect = tooltip.getBoundingClientRect();
+
+            let top = nodeRect.top - tooltipRect.height - 10;
+            let left = nodeRect.left + (nodeRect.width / 2) - (tooltipRect.width / 2);
+
+            if (left < 5) left = 5;
+            if (left + tooltipRect.width > window.innerWidth - 5) {
+                left = window.innerWidth - tooltipRect.width - 5;
+            }
+            if (top < 5) {
+                top = nodeRect.bottom + 10;
+            }
+
+            tooltip.style.top = `${top}px`;
+            tooltip.style.left = `${left}px`;
+        });
+
+        node.addEventListener('mouseout', () => {
+            tooltip.style.opacity = '0';
+            tooltip.style.visibility = 'hidden';
+        });
+    });
+});
+</script>
+{% endblock %}

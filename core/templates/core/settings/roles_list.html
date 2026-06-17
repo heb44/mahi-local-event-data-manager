@@ -1,0 +1,61 @@
+{% extends 'core/settings/base.html' %}
+
+{% block settings_title %}مدیریت نقش‌ها و دسترسی‌ها{% endblock %}
+
+{% block settings_content %}
+<div class="flex justify-between items-center mb-6">
+    <p class="text-sm text-gray-600">در این بخش می‌توانید نقش‌های مختلف کاربران را تعریف و دسترسی‌های هر نقش را مدیریت کنید.</p>
+    <a href="{% url 'accounts:role_create' %}" class="flex items-center gap-1 px-4 py-2 text-sm font-semibold text-white bg-indigo-600 rounded-lg shadow-md hover:bg-indigo-700 transition">
+        <span class="material-icons text-base">add</span>
+        <span class="hidden sm:inline">ایجاد نقش جدید</span>
+    </a>
+</div>
+
+<div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+    <table class="w-full text-sm text-right text-gray-500 responsive-table">
+        <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+            <tr>
+                <th scope="col" class="px-6 py-3">نام نقش</th>
+                <th scope="col" class="px-6 py-3">تعداد کاربران</th>
+                <th scope="col" class="px-6 py-3">تعداد دسترسی‌ها</th>
+                <th scope="col" class="px-6 py-3 text-left">عملیات</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for role in roles %}
+            <tr class="bg-white border-b hover:bg-gray-50">
+                <th scope="row" class="px-6 py-4 font-medium text-gray-900 whitespace-nowrap" data-label="نام نقش">
+                    {{ role.name }}
+                </th>
+                <td class="px-6 py-4" data-label="تعداد کاربران">
+                    {{ role.user_set.count }} نفر
+                </td>
+                <td class="px-6 py-4" data-label="تعداد دسترسی‌ها">
+                    {{ role.permission_count }} دسترسی
+                </td>
+                <td class="px-6 py-4 text-left" data-label="عملیات">
+                    <div class="flex items-center justify-end gap-4">
+                        <a href="{% url 'accounts:role_permissions_update' role.pk %}" class="font-medium text-indigo-600 hover:text-indigo-700 flex items-center gap-1">
+                            <span class="material-icons text-base">task_alt</span>
+                            <span class="hidden sm:inline">ویرایش دسترسی‌ها</span>
+                        </a>
+                        <a href="{% url 'accounts:role_update' role.pk %}" class="font-medium text-yellow-600 hover:text-yellow-700 flex items-center gap-1">
+                            <span class="material-icons text-base">edit</span>
+                            <span class="hidden sm:inline">تغییر نام</span>
+                        </a>
+                        <a href="{% url 'accounts:role_delete' role.pk %}" class="font-medium text-red-600 hover:text-red-700 flex items-center gap-1">
+                            <span class="material-icons text-base">delete</span>
+                             <span class="hidden sm:inline">حذف</span>
+                        </a>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="px-6 py-4 text-center text-gray-500">هیچ نقشی هنوز تعریف نشده است.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

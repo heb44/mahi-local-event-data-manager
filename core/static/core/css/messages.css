@@ -1,0 +1,30 @@
+.message-box {
+    border-radius: 1rem;
+    padding: 1rem;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+}
+
+.message-error {
+    background-color: #fef2f2;
+    border: 1px solid #fca5a5;
+    color: #b91c1c;
+}
+
+.message-success {
+    background-color: #ecfdf5;
+    border: 1px solid #34d399;
+    color: #065f46;
+}
+
+.message-warning {
+    background-color: #fffbeb;
+    border: 1px solid #fcd34d;
+    color: #92400e;
+}
+
+.message-info {
+    background-color: #eff6ff;
+    border: 1px solid #60a5fa;
+    color: #1e3a8a;
+}

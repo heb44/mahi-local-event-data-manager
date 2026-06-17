@@ -1,0 +1,781 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block title %}داده‌ساختار رویداد {{ event.name }}{% endblock %}
+
+{% block extra_styles %}
+<style>
+    .tooltip {
+        position: relative;
+        z-index: 200;
+    }
+    .tooltip:hover::after {
+        content: attr(data-tooltip);
+        position: absolute;
+        top: -30px;
+        right: 0;
+        background: #4b5563;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: pre;
+        z-index: 200;
+        font-family: Vazir, sans-serif;
+    }
+    input[list]::-webkit-calendar-picker-indicator { display: none; }
+    input[list] { appearance: none; -webkit-appearance: none; }
+    .toggle {
+        position: relative;
+        display: inline-block;
+        width: 34px;
+        height: 20px;
+    }
+    .toggle input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #d1d5db;
+        transition: .4s;
+        border-radius: 20px;
+    }
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 16px;
+        width: 16px;
+        left: 2px;
+        bottom: 2px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    input:checked + .slider {
+        background-color: #4f46e5;
+    }
+    input:checked + .slider:before {
+        transform: translateX(14px);
+    }
+    .card:hover {
+        transform: scale(1.05);
+        box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-start mb-3">
+    <div class="flex flex-col">
+        <h2 class="text-2xl font-bold text-indigo-700">داده‌ساختار رویداد {{ event.name }}</h2>
+        <a href="{% url 'events:detail' event.id %}" class="text-sm text-gray-500 mt-1">شناسه رویداد: {{ event.id }}</a>
+    </div>
+    <div class="flex flex-row gap-2">
+        {% if event.is_active %}
+        <a href="{% url 'operations:checkin' %}" class="flex items-center gap-1 bg-indigo-200/50 hover:bg-indigo-200 text-indigo-700 px-3 py-2 rounded-lg z-0">
+            <span class="material-icons tooltip" data-tooltip="چک‌این">approval</span>
+        </a>
+        {% endif %}
+        <a href="{% url 'events:participants' event.id %}" class="flex items-center gap-1 bg-indigo-200/50 hover:bg-indigo-200 text-indigo-700 px-3 py-2 rounded-lg z-0">
+            <span class="material-icons tooltip" data-tooltip="مدیریت شرکت‌کنندگان">account_box</span>
+        </a>
+        <button onclick="openAddModal()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl shadow transition">
+            <span class="material-icons">add_circle</span> <span class="hidden sm:inline">ستون جدید</span>
+        </button>
+    </div>
+</div>
+
+<div class="mb-6 bg-white rounded-xl shadow-md border border-gray-200 p-4 overflow-x-auto fade-in">
+    <table class="w-full text-sm text-gray-700 table-auto border-collapse ">
+        <thead>
+            <tr>
+                <th class="p-2 text-right bg-indigo-100 font-bold text-indigo-800 border border-indigo-300 whitespace-nowrap">شناسه <span class="material-icons text-sm align-middle">numbers</span> <span class="text-red-500">*</span></th>
+                <th class="p-2 text-right bg-indigo-100 font-bold text-indigo-800 border border-indigo-300 whitespace-nowrap">نام <span class="material-icons text-sm align-middle">text_fields</span> <span class="text-red-500">*</span></th>
+                <th class="p-2 text-right bg-indigo-100 font-bold text-indigo-800 border border-indigo-300 whitespace-nowrap">نام خانوادگی <span class="material-icons text-sm align-middle">text_fields</span> <span class="text-red-500">*</span></th>
+                <th class="p-2 text-right bg-indigo-100 font-bold text-indigo-800 border border-indigo-300 whitespace-nowrap">تاریخ تولد <span class="material-icons text-sm align-middle">calendar_today</span></th>
+                <th class="p-2 text-right bg-indigo-100 font-bold text-indigo-800 border border-indigo-300 whitespace-nowrap">شماره تلفن <span class="material-icons text-sm align-middle">text_fields</span></th>
+                {% for es in event_schemas %}
+                    <th class="p-2 text-right border  {% if es.is_active %}bg-indigo-50 text-indigo-700 border-indigo-300/75{% else %} border-gray-300 bg-gray-100 text-gray-500{% endif %} whitespace-nowrap">
+                        {{ es.column_name }} <span class="material-icons text-sm align-middle">
+                            {% if es.data_type == 'text' %}text_fields
+                            {% elif es.data_type == 'date' %}calendar_today
+                            {% elif es.data_type == 'number' %}numbers
+                            {% elif es.data_type == 'boolean' %}toggle_on
+                            {% endif %}
+                        </span>
+                        {% if es.is_required %}<span class="text-red-500">*</span>{% endif %}
+                    </th>
+                {% endfor %}
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="p-2 text-center bg-indigo-100/50 border border-gray-300 text-ellipsis overflow-hidden">شناسه</td>
+                <td class="p-2 text-center bg-indigo-100/50 border border-gray-300 text-ellipsis overflow-hidden">نام</td>
+                <td class="p-2 text-center bg-indigo-100/50 border border-gray-300 text-ellipsis overflow-hidden">نام خانوادگی</td>
+                <td class="p-2 text-center bg-indigo-100/50 border border-gray-300 text-ellipsis overflow-hidden">تاریخ تولد</td>
+                <td class="p-2 text-center bg-indigo-100/50 border border-gray-300 text-ellipsis overflow-hidden">شماره تلفن</td>
+                {% for es in event_schemas %}
+                    <td class="p-2 text-center border border-gray-300 {% if es.is_active %}bg-indigo-50/50 {% else %}bg-gray-100/50 text-gray-500{% endif %} text-ellipsis overflow-hidden">
+                        {% if es.metadata_source == 'pem' %}{{es.metadata_key}} <i class="text-indigo-600"> از </i> متادیتای شخص-رویداد 
+                        {% elif es.metadata_source == 'm' %}{{es.metadata_key}} <i class="text-indigo-600"> از </i> متادیتای شخص
+                        {% else %}مقداری که وارد می‌شود{% endif %}
+                        {% if es.default_value %}<br><i class="text-indigo-600"> یا </i> {{es.default_value}} {% endif %}
+                    </td>
+                {% endfor %}
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<!-- Column Cards -->
+<div class="grid grid-cols-2 sm:flex sm:flex-wrap gap-4">
+    <!-- Default Column Cards -->
+    <div class="z-0 fade-in relative z-10 card bg-indigo-100 w-full sm:w-[275px] p-4 rounded-xl shadow-md flex flex-col gap-3 border-2 border-indigo-400 h-fit">
+        <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-lg font-bold text-indigo-800">نام</h3>
+                    <span class="material-icons text-base text-indigo-500">lock</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 bg-indigo-200/50 px-1 py-1 rounded-lg border border-indigo-300/50 w-fit mt-2">
+                <span class="material-icons text-base text-red-500 tooltip" data-tooltip="اجباری">priority_high</span>
+                <span class="material-icons text-base text-blue-500 tooltip" data-tooltip="دسترسی مشاهده: همه">visibility</span>
+                <span class="material-icons text-base text-yellow-500 tooltip" data-tooltip="دسترسی ویرایش: بر اساس اجازه‌نامه‌ها">edit</span>
+            </div>
+        </div>
+        <div class="text-sm text-gray-700 space-y-1 mt-0">
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">category</span>
+                <strong>نوع داده:</strong> <span>متن</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">description</span>
+                <strong>مقدار پیش‌فرض:</strong> <span>ندارد</span>
+            </div>
+        </div>
+    </div>
+    <div class="z-0 fade-in relative z-10 card bg-indigo-100 w-full sm:w-[275px] p-4 rounded-xl shadow-md flex flex-col gap-3 border-2 border-indigo-400 h-fit">
+        <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-lg font-bold text-indigo-800">نام خانوادگی</h3>
+                    <span class="material-icons text-base text-indigo-500">lock</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 bg-indigo-200/50 px-1 py-1 rounded-lg border border-indigo-300/50 w-fit mt-2">
+                <span class="material-icons text-base text-red-500 tooltip" data-tooltip="اجباری">priority_high</span>
+                <span class="material-icons text-base text-blue-500 tooltip" data-tooltip="دسترسی مشاهده: همه">visibility</span>
+                <span class="material-icons text-base text-yellow-500 tooltip" data-tooltip="دسترسی ویرایش: بر اساس اجازه‌نامه‌ها">edit</span>
+            </div>
+        </div>
+        <div class="text-sm text-gray-700 space-y-1 mt-0">
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">category</span>
+                <strong>نوع داده:</strong> <span>متن</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">description</span>
+                <strong>مقدار پیش‌فرض:</strong> <span>ندارد</span>
+            </div>
+        </div>
+    </div>
+    <div class="z-0 fade-in relative z-10 card bg-indigo-100 w-full sm:w-[275px] p-4 rounded-xl shadow-md flex flex-col gap-3 border-2 border-indigo-400 h-fit">
+        <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-lg font-bold text-indigo-800">تاریخ تولد</h3>
+                    <span class="material-icons text-base text-indigo-500">lock</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 bg-indigo-200/50 px-1 py-1 rounded-lg border border-indigo-300/50 w-fit mt-2">
+                <span class="material-icons text-base text-gray-500 tooltip" data-tooltip="غیراجباری">priority_high</span>
+                <span class="material-icons text-base text-blue-500 tooltip" data-tooltip="دسترسی مشاهده: بر اساس اجازه‌نامه‌ها">visibility</span>
+                <span class="material-icons text-base text-yellow-500 tooltip" data-tooltip="دسترسی ویرایش: بر اساس اجازه‌نامه‌ها">edit</span>
+            </div>
+        </div>
+        <div class="text-sm text-gray-700 space-y-1 mt-0">
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">category</span>
+                <strong>نوع داده:</strong> <span>تاریخ</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">description</span>
+                <strong>مقدار پیش‌فرض:</strong> <span>ندارد</span>
+            </div>
+        </div>
+    </div>
+    <div class="z-0 fade-in relative z-10 card bg-indigo-100 w-full sm:w-[275px] p-4 rounded-xl shadow-md flex flex-col gap-3 border-2 border-indigo-400 h-fit">
+        <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-lg font-bold text-indigo-800">شماره تلفن</h3>
+                    <span class="material-icons text-base text-indigo-500">lock</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 bg-indigo-200/50 px-1 py-1 rounded-lg border border-indigo-300/50 w-fit mt-2">
+                <span class="material-icons text-base text-gray-500 tooltip" data-tooltip="غیراجباری">priority_high</span>
+                <span class="material-icons text-base text-blue-500 tooltip" data-tooltip="دسترسی مشاهده: بر اساس اجازه‌نامه‌ها">visibility</span>
+                <span class="material-icons text-base text-yellow-500 tooltip" data-tooltip="دسترسی ویرایش: بر اساس اجازه‌نامه‌ها">edit</span>
+            </div>
+        </div>
+        <div class="text-sm text-gray-700 space-y-1 mt-0">
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">category</span>
+                <strong>نوع داده:</strong> <span>متن</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">description</span>
+                <strong>مقدار پیش‌فرض:</strong> <span>ندارد</span>
+            </div>
+        </div>
+    </div>
+
+    {% for es in event_schemas %}
+    <div class="z-0 fade-in relative z-10 card w-full sm:w-[275px] p-4 rounded-xl shadow-md flex flex-col gap-3 border {% if es.is_active %}bg-indigo-50 border-indigo-300{% else %}bg-gray-100 border-gray-300{% endif %} h-fit">
+        <div class="flex flex-col gap-1">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <h3 class="text-lg font-bold {% if es.is_active %}text-indigo-700{% else %}text-gray-500{% endif %} truncate overflow-hidden max-w-[20ch]" title="{{es.column_name}}">{{ es.column_name }}</h3>
+                </div>
+                <button onclick="deleteSchema({{ event.id }}, {{ es.id }})" class="absolute top-4 left-4 text-red-400 hover:text-red-600">
+                    <span class="material-icons text-base">delete</span>
+                </button>
+            </div>
+            <div class="flex items-center gap-2 px-1 py-1 rounded-lg border {% if es.is_active %}bg-indigo-200/50 border-indigo-300/50{% else %}bg-gray-200/50 border-gray-300/50{% endif %} w-fit mt-2">
+                {% if es.is_required and es.is_active %}
+                    <span class="material-icons text-base text-red-500 tooltip" data-tooltip="اجباری">priority_high</span>
+                {% else %}
+                    <span class="material-icons text-base text-gray-400 tooltip" data-tooltip="غیراجباری">priority_high</span>
+                {% endif %}
+                <div class="relative group inline-block">
+                    <span class="material-icons text-base {% if es.access_list.view and es.is_active %}text-indigo-500{% else %}text-gray-400{% endif %}">visibility</span>
+                    <div class="invisible group-hover:visible absolute z-50 right-0 -top-2 translate-y-[-100%] w-max max-w-xs bg-gray-600 text-white text-xs rounded p-2 shadow tooltip-content" data-tooltip-html="{% for cp in es.access_list.view %}{% if cp %}{{ cp.name|escape }} ({{ cp.user_name|default:'بدون کاربر'|escape }})<br>{% endif %}{% empty %}هیچکس{% endfor %}"></div>
+                </div>
+                <div class="relative group inline-block">
+                    <span class="material-icons text-base {% if es.access_list.edit and es.is_active %}text-yellow-500{% else %}text-gray-400{% endif %}">edit</span>
+                    <div class="invisible group-hover:visible absolute z-50 right-0 -top-2 translate-y-[-100%] w-max max-w-xs bg-gray-600 text-white text-xs rounded p-2 shadow tooltip-content" data-tooltip-html="{% for cp in es.access_list.edit %}{% if cp %}{{ cp.name|escape }} ({{ cp.user_name|default:'بدون کاربر'|escape }})<br>{% endif %}{% empty %}هیچکس{% endfor %}"></div>
+                </div>
+                <div class="relative group inline-block">
+                    <span class="material-icons text-base {% if es.access_list.fill and es.is_active %}text-green-500{% else %}text-gray-400{% endif %}">add</span>
+                    <div class="invisible group-hover:visible absolute z-50 right-0 -top-2 translate-y-[-100%] w-max max-w-xs bg-gray-600 text-white text-xs rounded p-2 shadow tooltip-content" data-tooltip-html="{% for cp in es.access_list.fill %}{% if cp %}{{ cp.name|escape }} ({{ cp.user_name|default:'بدون کاربر'|escape }})<br>{% endif %}{% empty %}هیچکس{% endfor %}"></div>
+                </div>
+            </div>
+        </div>
+        <div class="text-sm {% if es.is_active %}text-gray-700{% else %}text-gray-500{% endif %} space-y-1 mt-0">
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">category</span>
+                <strong>نوع داده:</strong> <span>{{ es.get_data_type_display }}</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">description</span>
+                <strong>مقدار پیش‌فرض:</strong> <span>{{ es.default_value|default:'ندارد' }}</span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">source</span>
+                <strong>پیش‌بارگذاری از:</strong> <span>
+                    {% if es.metadata_source == 'pem' %}متادیتا (رویداد)
+                    {% elif es.metadata_source == 'm' %}متادیتا (شخص)
+                    {% else %}غیر فعال{% endif %}
+                </span>
+            </div>
+            <div class="flex items-center gap-1">
+                <span class="material-icons text-base">key</span>
+                <strong>کلید متادیتا:</strong>{% if es.metadata_key %}<span>{{ es.metadata_key }}</span>{%else%}-{% endif %}
+            </div>
+            
+        </div>
+        <div class="flex justify-end items-center gap-2 mt-2">
+            <label class="toggle">
+                <input type="checkbox" data-schema-id="{{ es.id }}" {% if es.is_active %}checked{% endif %}>
+                <span class="slider"></span>
+            </label>
+            <button onclick="openEditModal({{ event.id }}, {{ es.id }})" class="flex items-center justify-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium">
+                <span class="material-icons text-base">edit</span> <span class="hidden sm:inline">ویرایش</span>
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Add Column Modal -->
+<div id="addColumnModal" class="hidden fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex justify-center items-center z-50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto p-6 relative">
+        <button onclick="closeAddModal()" class="absolute top-2 left-2 text-gray-400 hover:text-gray-600">
+            <span class="material-icons">close</span>
+        </button>
+        <h3 class="text-xl font-bold mb-4 text-indigo-700">افزودن ستون جدید</h3>
+        <form id="addSchemaForm" method="POST" action="{% url 'events:schema_create' event.id %}">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div>
+                    <label for="addName" class="block text-sm font-medium text-gray-700 mb-1">نام ستون</label>
+                    <input type="text" id="addName" name="column_name" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="مثال: نوشیدنی مورد علاقه">
+                </div>
+                <div>
+                    <label for="addDataType" class="block text-sm font-medium text-gray-700 mb-1">نوع داده</label>
+                    <select id="addDataType" name="data_type" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="text">متن</option>
+                        <option value="number">عدد</option>
+                        <option value="date">تاریخ</option>
+                        <option value="boolean">بولین</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" name="is_required" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <span class="text-sm text-gray-700">ستون اجباری باشد؟</span>
+                    </label>
+                </div>
+                <div>
+                    <label for="addDefaultValue" class="block text-sm font-medium text-gray-700 mb-1">مقدار پیش‌فرض</label>
+                    <input type="text" id="addDefaultValue"
+                            name="default_value"
+                            data-jdp 
+                            autocomplete="off"        
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="یک تاریخ را انتخاب کنید">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">پیش‌بارگذاری از</label>
+                    <div class="flex flex-col gap-2">
+                        <label class="flex items-center gap-2">
+                            <input type="radio" name="metadata_source" value="" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300" onchange="toggleMetadataKey('add')">
+                            <span class="text-sm text-gray-700">غیر فعال</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="radio" name="metadata_source" value="m" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300" onchange="toggleMetadataKey('add')">
+                            <span class="text-sm text-gray-700">متادیتای شخص</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="radio" name="metadata_source" value="pem" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300" onchange="toggleMetadataKey('add')">
+                            <span class="text-sm text-gray-700">متادیتای شخص-رویداد</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label for="addMetadataKey" class="block text-sm font-medium text-gray-700 mb-1">کلید متادیتا</label>
+                    <input type="text" id="addMetadataKey" name="metadata_key" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed" disabled placeholder="مثال: favorite_drink">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">دسترسی‌ها</label>
+                    <div id="addPermissionsList" class="space-y-2"></div>
+                    <button type="button" onclick="document.getElementById('addPermission').classList.remove('hidden')" class="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium mt-2">
+                        <span class="material-icons text-base">add</span> افزودن رول دسترسی
+                    </button>
+                    <div id="addPermission" class="hidden mt-2 p-4 bg-gray-50 rounded-md border border-gray-200">
+                        <div class="mb-2">
+                            <label for="addPermissionEntity" class="block text-sm font-medium text-gray-700 mb-1">چک‌پوینت</label>
+                            <input list="addEntities" id="addPermissionEntity" name="permissionEntity" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="جستجو کنید...">
+                            <datalist id="addEntities">
+                                {% for checkpoint in checkpoints %}
+                                    <option value="{{ checkpoint.name|escape }}" data-id="{{ checkpoint.id }}">
+                                {% endfor %}
+                            </datalist>
+                        </div>
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" name="view" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                <span class="text-sm text-gray-700">مشاهده</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" name="edit" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                <span class="text-sm text-gray-700">ویرایش</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" name="entry" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                <span class="text-sm text-gray-700">وارد کردن</span>
+                            </label>
+                        </div>
+                        <div class="flex justify-end gap-2 mt-2">
+                            <button type="button" onclick="document.getElementById('addPermission').classList.add('hidden')" class="text-gray-600 hover:text-gray-800 text-sm">لغو</button>
+                            <button type="button" onclick="addPermission('add')" class="bg-indigo-600 text-white px-4 py-1 rounded-md hover:bg-indigo-700">اضافه</button>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" name="is_active" checked class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <span class="text-sm text-gray-700">ستون فعال باشد؟</span>
+                    </label>
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 shadow">ثبت</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Edit Column Modal -->
+<div id="editColumnModal" class="hidden fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex justify-center items-center z-50">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md max-h-[80vh] overflow-y-auto p-6 relative">
+        <button onclick="closeEditModal()" class="absolute top-2 left-2 text-gray-400 hover:text-gray-600">
+            <span class="material-icons">close</span>
+        </button>
+        <h3 class="text-xl font-bold mb-4 text-indigo-700">ویرایش ستون</h3>
+        <form id="editSchemaForm" method="POST" action="">
+            {% csrf_token %}
+            <div class="space-y-4">
+                <div>
+                    <label for="editName" class="block text-sm font-medium text-gray-700 mb-1">نام ستون</label>
+                    <input type="text" id="editName" name="column_name" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label for="editDataType" class="block text-sm font-medium text-gray-700 mb-1">نوع داده</label>
+                    <select id="editDataType" name="data_type" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="text">متن</option>
+                        <option value="number">عدد</option>
+                        <option value="date">تاریخ</option>
+                        <option value="boolean">بولین</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" name="is_required" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <span class="text-sm text-gray-700">ستون اجباری باشد؟</span>
+                    </label>
+                </div>
+                <div>
+                    <label for="editDefaultValue" class="block text-sm font-medium text-gray-700 mb-1">مقدار پیش‌فرض</label>
+                    <input type="text" id="editDefaultValue" 
+                            name="default_value"
+                            data-jdp 
+                            autocomplete="off"
+                            class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">پیش‌بارگذاری از</label>
+                    <div class="flex flex-col gap-2">
+                        <label class="flex items-center gap-2">
+                            <input type="radio" name="metadata_source" value="" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300" onchange="toggleMetadataKey('edit')">
+                            <span class="text-sm text-gray-700">غیر فعال</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="radio" name="metadata_source" value="m" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300" onchange="toggleMetadataKey('edit')">
+                            <span class="text-sm text-gray-700">متادیتای شخص</span>
+                        </label>
+                        <label class="flex items-center gap-2">
+                            <input type="radio" name="metadata_source" value="pem" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300" onchange="toggleMetadataKey('edit')">
+                            <span class="text-sm text-gray-700">متادیتای شخص-رویداد</span>
+                        </label>
+                    </div>
+                </div>
+                <div>
+                    <label for="editMetadataKey" class="block text-sm font-medium text-gray-700 mb-1">کلید متادیتا</label>
+                    <input type="text" id="editMetadataKey" name="metadata_key" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed" disabled>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">دسترسی‌ها</label>
+                    <div id="editPermissionsList" class="space-y-2"></div>
+                    <button type="button" onclick="document.getElementById('editPermission').classList.remove('hidden')" class="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium mt-2">
+                        <span class="material-icons text-base">add</span> افزودن رول دسترسی
+                    </button>
+                    <div id="editPermission" class="hidden mt-2 p-4 bg-gray-50 rounded-md border border-gray-200">
+                        <div class="mb-2">
+                            <label for="editPermissionEntity" class="block text-sm font-medium text-gray-700 mb-1">چک‌پوینت</label>
+                            <input list="editEntities" id="editPermissionEntity" name="permissionEntity" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="جستجو کنید...">
+                            <datalist id="editEntities">
+                                <!-- Populated dynamically -->
+                            </datalist>
+                        </div>
+                        <div class="flex gap-4">
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" name="view" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                <span class="text-sm text-gray-700">مشاهده</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" name="edit" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                <span class="text-sm text-gray-700">ویرایش</span>
+                            </label>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" name="entry" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                                <span class="text-sm text-gray-700">وارد کردن</span>
+                            </label>
+                        </div>
+                        <div class="flex justify-end gap-2 mt-2">
+                            <button type="button" onclick="document.getElementById('editPermission').classList.add('hidden')" class="text-gray-600 hover:text-gray-800 text-sm">لغو</button>
+                            <button type="button" onclick="addPermission('edit')" class="bg-indigo-600 text-white px-4 py-1 rounded-md hover:bg-indigo-700">اضافه</button>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" name="is_active" class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
+                        <span class="text-sm text-gray-700">ستون فعال باشد؟</span>
+                    </label>
+                </div>
+                <div class="flex justify-end">
+                    <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 shadow">ثبت</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block extra_scripts %}
+<script>
+function getCsrfToken() {
+    return document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+}
+
+function closeAddModal() {
+    document.getElementById('addColumnModal').classList.add('hidden');
+    const form = document.getElementById('addSchemaForm');
+    form.reset();
+    document.getElementById('addPermissionsList').innerHTML = '';
+    document.getElementById('addPermission').classList.add('hidden');
+    document.getElementById('addMetadataKey').disabled = true;
+    form.querySelector('input[name="metadata_source"][value=""]').checked = true;
+    handleDataTypeChange(document.getElementById('addDataType'));
+}
+
+function closeEditModal() {
+    document.getElementById('editColumnModal').classList.add('hidden');
+    const form = document.getElementById('editSchemaForm');
+    form.reset();
+    document.getElementById('editPermissionsList').innerHTML = '';
+    document.getElementById('editPermission').classList.add('hidden');
+    document.getElementById('editMetadataKey').disabled = true;
+    form.querySelector('input[name="metadata_source"][value=""]').checked = true;
+    handleDataTypeChange(document.getElementById('editDataType'));
+}
+
+function toggleMetadataKey(modalType) {
+    const prefix = modalType === 'add' ? 'add' : 'edit';
+    const metadataSource = document.querySelector(`#${prefix}SchemaForm input[name="metadata_source"]:checked`).value;
+    const metadataKeyInput = document.getElementById(prefix + 'MetadataKey');
+    metadataKeyInput.disabled = metadataSource === '';
+}
+
+function addPermission(modalType) {
+    const prefix = modalType === 'add' ? 'add' : 'edit';
+    const entityInput = document.getElementById(prefix + 'PermissionEntity');
+    const entitiesList = document.getElementById(prefix + 'Entities');
+    const selectedOption = Array.from(entitiesList.options)
+        .find(option => option.value === entityInput.value);
+    
+    if (!selectedOption) {
+        alert('لطفاً یک چک‌پوینت معتبر انتخاب کنید.');
+        return;
+    }
+    
+    const checkpointId = selectedOption.getAttribute('data-id');
+    const checkpointName = selectedOption.value;
+    const viewChecked = document.querySelector(`#${prefix}Permission input[name="view"]`).checked;
+    const editChecked = document.querySelector(`#${prefix}Permission input[name="edit"]`).checked;
+    const fillChecked = document.querySelector(`#${prefix}Permission input[name="entry"]`).checked;
+    
+    const permissions = [];
+    if (viewChecked) permissions.push('مشاهده');
+    if (editChecked) permissions.push('ویرایش');
+    if (fillChecked) permissions.push('وارد کردن');
+    
+    const permissionDiv = document.createElement('div');
+    permissionDiv.className = 'flex items-center justify-between bg-gray-50 p-2 rounded-md border border-gray-200';
+    permissionDiv.setAttribute('data-checkpoint-id', checkpointId);
+    permissionDiv.innerHTML = `
+        <span class="text-sm text-gray-700">${checkpointName}: ${permissions.join(', ') || 'بدون دسترسی'}</span>
+        <button type="button" onclick="removePermission(this)" class="text-red-400 hover:text-red-600">
+            <span class="material-icons text-base">delete</span>
+        </button>
+        <input type="hidden" name="checkpoint_id" value="${checkpointId}">
+        ${viewChecked ? `<input type="hidden" name="view" value="${checkpointId}">` : ''}
+        ${editChecked ? `<input type="hidden" name="edit" value="${checkpointId}">` : ''}
+        ${fillChecked ? `<input type="hidden" name="entry" value="${checkpointId}">` : ''}
+    `;
+    
+    document.getElementById(prefix + 'PermissionsList').appendChild(permissionDiv);
+    document.getElementById(prefix + 'Permission').classList.add('hidden');
+    document.getElementById(prefix + 'PermissionEntity').value = '';
+    document.querySelector(`#${prefix}Permission input[name="view"]`).checked = false;
+    document.querySelector(`#${prefix}Permission input[name="edit"]`).checked = false;
+    document.querySelector(`#${prefix}Permission input[name="entry"]`).checked = false;
+}
+
+function removePermission(button) {
+    button.parentElement.remove();
+}
+
+function openAddModal() {
+    document.getElementById('addColumnModal').classList.remove('hidden');
+    handleDataTypeChange(document.getElementById('addDataType'));
+}
+
+function openEditModal(eventId, schemaId) {
+    fetch(`/events/${eventId}/schema/edit/${schemaId}/`, {
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Populate edit modal fields
+        document.getElementById('editName').value = data.column_name;
+        document.getElementById('editDataType').value = data.data_type;
+        document.getElementById('editDefaultValue').value = data.default_value || '';
+        document.getElementById('editMetadataKey').value = data.metadata_key || '';
+        document.querySelector(`#editSchemaForm input[name="metadata_source"][value="${data.metadata_source || ''}"]`).checked = true;
+        document.getElementById('editMetadataKey').disabled = data.metadata_source === '';
+        document.querySelector('#editSchemaForm input[name="is_required"]').checked = data.is_required;
+        document.querySelector('#editSchemaForm input[name="is_active"]').checked = data.is_active;
+        document.getElementById('editSchemaForm').action = `/events/${eventId}/schema/edit/${schemaId}/`;
+        
+        handleDataTypeChange(document.getElementById('editDataType'));
+
+        // Populate permissions
+        const permissionsList = document.getElementById('editPermissionsList');
+        permissionsList.innerHTML = '';
+        data.permissions.forEach(perm => {
+            const permissions = [];
+            if (perm.can_view) permissions.push('مشاهده');
+            if (perm.can_edit) permissions.push('ویرایش');
+            if (perm.can_fill) permissions.push('وارد کردن');
+            
+            const permissionDiv = document.createElement('div');
+            permissionDiv.className = 'flex items-center justify-between bg-gray-50 p-2 rounded-md border border-gray-200';
+            permissionDiv.setAttribute('data-checkpoint-id', perm.checkpoint_id);
+            permissionDiv.innerHTML = `
+                <span class="text-sm text-gray-700">${perm.checkpoint_name}: ${permissions.join(', ') || 'بدون دسترسی'}</span>
+                <button type="button" onclick="removePermission(this)" class="text-red-400 hover:text-red-600">
+                    <span class="material-icons text-base">delete</span>
+                </button>
+                <input type="hidden" name="checkpoint_id" value="${perm.checkpoint_id}">
+                ${perm.can_view ? `<input type="hidden" name="view" value="${perm.checkpoint_id}">` : ''}
+                ${perm.can_edit ? `<input type="hidden" name="edit" value="${perm.checkpoint_id}">` : ''}
+                ${perm.can_fill ? `<input type="hidden" name="entry" value="${perm.checkpoint_id}">` : ''}
+            `;
+            permissionsList.appendChild(permissionDiv);
+        });
+        
+        // Populate datalist for checkpoints
+        const datalist = document.getElementById('editEntities');
+        datalist.innerHTML = '';
+        data.checkpoints.forEach(checkpoint => {
+            const option = document.createElement('option');
+            option.value = checkpoint.name;
+            option.setAttribute('data-id', checkpoint.id);
+            datalist.appendChild(option);
+        });
+        
+        document.getElementById('editColumnModal').classList.remove('hidden');
+    })
+    .catch(error => {
+        console.error('Error loading edit modal:', error);
+        alert('خطایی در بارگذاری فرم ویرایش رخ داد. لطفاً از وجود تمام فیلدها در HTML اطمینان حاصل کنید.');
+    });
+}
+
+function deleteSchema(eventId, schemaId) {
+    if (window.confirm('آیا مطمئن هستید که می‌خواهید این ستون را حذف کنید؟')) {
+        fetch(`/events/${eventId}/schema/delete/${schemaId}/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                window.location.reload();
+            } else {
+                alert('خطایی در حذف ستون رخ داد: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting schema:', error);
+            alert('خطایی در حذف ستون رخ داد.');
+        });
+    }
+}
+
+// Handler for dynamically enabling/disabling the datepicker
+function handleDataTypeChange(selectElement) {
+    const modalType = selectElement.id.startsWith('add') ? 'add' : 'edit';
+    const defaultValueInput = document.getElementById(modalType + 'DefaultValue');
+    
+    if (selectElement.value === 'date') {
+        defaultValueInput.setAttribute('data-jdp', '');
+        defaultValueInput.setAttribute('placeholder', 'یک تاریخ را انتخاب کنید');
+    } else {
+        defaultValueInput.removeAttribute('data-jdp');
+        defaultValueInput.setAttribute('placeholder', 'مقدار پیش‌فرض (اختیاری)');
+        if (selectElement.value === 'boolean'){
+            defaultValueInput.setAttribute('placeholder', 'true یا false');
+        }
+    }
+}
+
+// Main script execution starts here
+document.addEventListener('DOMContentLoaded', function() {
+    
+    // Initialize the datepicker watcher globally, ONCE.
+    jalaliDatepicker.startWatch({
+        showTodayBtn: true,
+        autoClose: true
+    });
+    
+    // Event Listeners for Data Type Change
+    document.getElementById('addDataType').addEventListener('change', function() {
+        handleDataTypeChange(this);
+    });
+
+    document.getElementById('editDataType').addEventListener('change', function() {
+        handleDataTypeChange(this);
+    });
+
+    // Setup for toggle switches to activate/deactivate schemas
+    const schemaCheckboxes = document.querySelectorAll('.toggle input[type="checkbox"][data-schema-id]');
+    schemaCheckboxes.forEach(checkbox => {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '{% url 'events:schema_toggle_status' event.id %}';
+        form.style.display = 'none';
+
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = getCsrfToken();
+        form.appendChild(csrfInput);
+
+        const idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'id';
+        idInput.value = checkbox.dataset.schemaId;
+        form.appendChild(idInput);
+
+        const activeInput = document.createElement('input');
+        activeInput.type = 'hidden';
+        activeInput.name = 'active';
+        activeInput.value = 'true';
+
+        document.body.appendChild(form);
+
+        checkbox.addEventListener('change', function () {
+            if (this.checked) {
+                form.appendChild(activeInput);
+            } else {
+                if (activeInput.parentNode) {
+                    activeInput.remove();
+                }
+            }
+            form.submit();
+        });
+    });
+
+    // Setup for HTML tooltips
+    document.querySelectorAll('.tooltip-content').forEach(el => {
+        el.innerHTML = el.dataset.tooltipHtml.replace(/</g, '<').replace(/>/g, '>');
+    });
+});
+</script>
+{% endblock %}

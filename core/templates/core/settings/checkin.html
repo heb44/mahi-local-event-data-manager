@@ -1,0 +1,189 @@
+{% extends 'core/settings/base.html' %}
+{% block settings_title %}چک‌این{% endblock %}
+{% block settings_content %}
+<form method="POST" action="{% url 'accounts:settings_checkin' %}">
+    {% csrf_token %}
+<details open class="mb-4">
+            <summary class="cursor-pointer p-2 bg-gray-50 border border-gray-300 rounded-md text-gray-800 text-sm font-medium hover:bg-gray-100 open:bg-indigo-100">چک‌این سریع</summary>
+            <div class="p-5 space-y-4">
+                <div>
+                    <label class="flex items-center">
+                        <input
+                            type="checkbox"
+                            name="ci_auto_submit"
+                            class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                            {% if user_settings.ci_auto_submit %} checked {% endif %}
+                        >
+                        <span class="mr-2 text-sm text-gray-800">فعال کردن ارسال خودکار درخواست جستجو</span>
+                    </label>
+                </div>
+                <div class="flex flex-col sm:flex-row gap-4">
+                    <div class="flex-1">
+                        <label for="ci_auto_submit_char_num" class="block text-sm font-medium text-gray-700 mb-2">حداقل کاراکتر</label>
+                        <input
+                            id="ci_auto_submit_char_num"
+                            name="ci_auto_submit_char_num"
+                            type="number"
+                            class="w-full text-gray-800 text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            value="{{user_settings.ci_auto_submit_char_num}}"
+                        >
+                    </div>
+                    <div class="flex-1">
+                        <label for="ci_auto_submit_delay" class="block text-sm font-medium text-gray-700 mb-2">تاخیر در ارسال (ms)</label>
+                        <input
+                            id="ci_auto_submit_delay"
+                            name="ci_auto_submit_delay"
+                            type="number"
+                            class="w-full text-gray-800 text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            value="{{user_settings.ci_auto_submit_delay}}"
+                        >
+                    </div>
+                </div>
+    </div>
+</details>
+
+<div class="flex justify-end">
+        <button type="submit" class="px-4 py-2 text-md bg-green-600 text-white rounded-lg">ذخیره</button>
+    </div>
+</form>
+
+{% comment %} <!-- بخش اینپوت‌های متنی -->
+        <details open class="mb-4">
+            <summary class="cursor-pointer p-2 bg-gray-50 border border-gray-300 rounded-md text-gray-800 text-sm font-medium hover:bg-gray-100 open:bg-indigo-100">اینپوت‌های متنی</summary>
+            <div class="p-4 space-y-4">
+                <div>
+                    <label for="text-input" class="block text-sm font-medium text-gray-700 mb-2">اینپوت متنی</label>
+                    <input
+                        id="text-input"
+                        name="text-input"
+                        type="text"
+                        class="w-full text-gray-800 text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="متن را وارد کنید"
+                    >
+                </div>
+                <div>
+                    <label for="email-input" class="block text-sm font-medium text-gray-700 mb-2">اینپوت ایمیل</label>
+                    <input
+                        id="email-input"
+                        name="email-input"
+                        type="email"
+                        class="w-full text-gray-800 text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="ایمیل را وارد کنید"
+                    >
+                </div>
+                <div>
+                    <label for="password-input" class="block text-sm font-medium text-gray-700 mb-2">اینپوت رمز عبور</label>
+                    <input
+                        id="password-input"
+                        name="password-input"
+                        type="password"
+                        class="w-full text-gray-800 text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="رمز عبور را وارد کنید"
+                    >
+                </div>
+            </div>
+        </details>
+
+        <!-- بخش اینپوت‌های انتخابی -->
+        <details class="mb-4">
+            <summary class="cursor-pointer p-2 bg-gray-50 border border-gray-300 rounded-md text-gray-800 text-sm font-medium hover:bg-gray-100 open:bg-indigo-100">اینپوت‌های انتخابی</summary>
+            <div class="p-4 space-y-4">
+                <div>
+                    <label for="select-input" class="block text-sm font-medium text-gray-700 mb-2">منوی کشویی</label>
+                    <select
+                        id="select-input"
+                        name="select-input"
+                        class="w-full text-gray-800 text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                        <option value="">انتخاب کنید</option>
+                        <option value="1">گزینه ۱</option>
+                        <option value="2">گزینه ۲</option>
+                        <option value="3">گزینه ۳</option>
+                    </select>
+                </div>
+            </div>
+        </details>
+
+        <!-- بخش چک‌باکس‌ها -->
+        <details class="mb-4">
+            <summary class="cursor-pointer p-2 bg-gray-50 border border-gray-300 rounded-md text-gray-800 text-sm font-medium hover:bg-gray-100 open:bg-indigo-100">چک‌باکس‌ها</summary>
+            <div class="p-4 space-y-4">
+                <div>
+                    <label class="flex items-center">
+                        <input
+                            type="checkbox"
+                            name="checkbox-input"
+                            class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        >
+                        <span class="mr-2 text-sm text-gray-800">فعال کردن اعلان‌ها</span>
+                    </label>
+                </div>
+                <div>
+                    <label class="flex items-center">
+                        <input
+                            type="checkbox"
+                            name="checkbox-input-2"
+                            class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                        >
+                        <span class="mr-2 text-sm text-gray-800">ذخیره خودکار</span>
+                    </label>
+                </div>
+            </div>
+        </details>
+
+        <!-- بخش دکمه‌های رادیویی -->
+        <details class="mb-4">
+            <summary class="cursor-pointer p-2 bg-gray-50 border border-gray-300 rounded-md text-gray-800 text-sm font-medium hover:bg-gray-100 open:bg-indigo-100">دکمه‌های رادیویی</summary>
+            <div class="p-4 space-y-4">
+                <div>
+                    <label class="flex items-center">
+                        <input
+                            type="radio"
+                            name="radio-input"
+                            value="option1"
+                            class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                        >
+                        <span class="mr-2 text-sm text-gray-800">گزینه ۱</span>
+                    </label>
+                </div>
+                <div>
+                    <label class="flex items-center">
+                        <input
+                            type="radio"
+                            name="radio-input"
+                            value="option2"
+                            class="h-4 w-4 text-indigo-600 border-gray-300 focus:ring-indigo-500"
+                        >
+                        <span class="mr-2 text-sm text-gray-800">گزینه ۲</span>
+                    </label>
+                </div>
+            </div>
+        </details>
+
+        <!-- بخش اینپوت‌های عددی و تاریخ -->
+        <details class="mb-4">
+            <summary class="cursor-pointer p-2 bg-gray-50 border border-gray-300 rounded-md text-gray-800 text-sm font-medium hover:bg-gray-100 open:bg-indigo-100">اینپوت‌های عددی و تاریخ</summary>
+            <div class="p-4 space-y-4">
+                <div>
+                    <label for="number-input" class="block text-sm font-medium text-gray-700 mb-2">اینپوت عددی</label>
+                    <input
+                        id="number-input"
+                        name="number-input"
+                        type="number"
+                        class="w-full text-gray-800 text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        placeholder="عدد را وارد کنید"
+                    >
+                </div>
+                <div>
+                    <label for="date-input" class="block text-sm font-medium text-gray-700 mb-2">اینپوت تاریخ</label>
+                    <input
+                        id="date-input"
+                        name="date-input"
+                        type="date"
+                        class="w-full text-gray-800 text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    >
+                </div>
+            </div>
+        </details> {% endcomment %}
+
+{% endblock %}

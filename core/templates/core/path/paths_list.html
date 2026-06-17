@@ -1,0 +1,231 @@
+{% extends 'core/base.html' %}
+{% load jalali_filters %}
+{% block title %}مسیرها{% endblock %}
+
+{% block extra_styles %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+
+<style>
+.modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: none; /* به صورت پیش‌فرض مخفی */
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    z-index: 1000;
+}
+
+    .modal.is-open {
+        display: flex; 
+    }
+    .modal-content {
+      background-color: white;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      width: 90%;
+      max-width: 32rem;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 0 10px rgba(0,0,0,0.2);
+      position: relative; 
+    }
+    .modal-content .close-btn {
+      position: absolute;
+      top: 0.8rem;
+      left: 0.8rem;
+      cursor: pointer;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+    }
+
+    .play-pause {
+      font-size: 1.5rem;
+      color: #10b981;
+      cursor: pointer;
+    }
+    .play-pause:hover {
+      color: #059669;
+    }
+    
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 gap-2 min-w-0">
+    <h2 class="text-lg sm:text-2xl font-bold text-gray-800 truncate" title="مسیرها">مسیرها</h2>
+    <button onclick="document.getElementById('routeModal').classList.add('is-open')" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl shadow transition shrink-0">
+      <span class="material-icons">add_circle</span>
+      <span class="hidden sm:inline">مسیر جدید</span>
+    </button>
+  </div>
+
+<div class="flex flex-wrap">
+  {% for group in paths_grouped %}
+  <!-- Active Route Card -->
+  <div class="fade-in overflow-visible w-full flex flex-col gap-1 border border-gray-300 rounded-xl bg-gray-50 p-5 mb-4">
+    <a  class="flex text-base text-gray-600 font-semibold">رویداد {{group.0.event.name}}</a>
+    <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-visible w-full">
+      {% for path in group %}
+      <div class="fade-in overflow-visible relative bg-{% if path.is_active %}indigo-50 border-indigo-300{% else %}white border-gray-200{% endif %} w-full p-4 rounded-xl shadow-md flex flex-col gap-3 border h-fit">
+        <div class="flex justify-between items-start overflow-visible">
+          <div class="tooltip" data-tooltip="شناسه:{{path.id}} | {{path.name}}"> <h3 class="text-lg font-bold {% if path.is_active %}text-indigo-700{% else %}text-gray-800{% endif %} truncate w-[15ch]">{{path.name}}</h3></div>
+          <div class="flex items-center gap-1">
+            {% if path.is_active %}
+              <span class="align-middle play-pause material-icons cursor-pointer" data-action="pause" onclick="togglePathStatus({{ path.id }}, 'pause')">pause</span>
+            {% else %}
+              <span class="align-middle play-pause material-icons cursor-pointer" data-action="play" onclick="togglePathStatus({{ path.id }}, 'play')">play_arrow</span>
+            {% endif %}
+            <button class="text-red-400 hover:text-red-600">
+              <span class="align-middle material-icons text-base" onclick="confirmDelete({{path.id}}, {{path.event_id}})">delete</span>
+            </button>
+          </div>
+        </div>
+        <div class="flex items-center gap-1 text-sm text-gray-600">
+          <span class="material-icons text-base">calendar_today</span>
+          <strong>تاریخ ایجاد:</strong> <span>{{path.created_at|to_jalali}}</span>
+        </div>
+        <div class="text-sm text-gray-700 space-y-1">
+          <div class="flex items-center gap-1">
+            <span class="material-icons text-base">place</span>
+            <strong>چک‌پوینت‌ها:</strong> <span>{{path.cp_count}}</span>
+          </div>
+        </div>
+        <a href="{% url 'events:path_detail' path.id %}" class="flex items-center justify-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium self-end mt-2">
+          <span class="material-icons text-base">visibility</span>
+          <span class="hidden sm:inline">مشاهده</span>
+        </a>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+    {% comment %} <!-- Inactive Route Card -->
+    <div class="fade-in relative bg-white w-64 p-4 rounded-xl shadow-md flex flex-col gap-3 border border-gray-200 h-fit">
+      <div class="flex justify-between items-start">
+        <h3 class="text-lg font-bold text-gray-800">مسیر شرقی</h3>
+        <button class="text-red-500 hover:text-red-700">
+          <span class="material-icons text-base">delete</span>
+        </button>
+      </div>
+      <div class="flex items-center gap-1 text-sm text-gray-500">
+        <span class="material-icons text-base">calendar_today</span>
+        <strong>تاریخ ایجاد:</strong> <span>۱۴۰۳/۰۲/۰۲</span>
+      </div>
+      <div class="text-sm text-gray-600 space-y-1">
+        <div class="flex items-center gap-1">
+          <span class="material-icons text-base">place</span>
+          <strong>چک‌پوینت‌ها:</strong> <span>۳</span>
+        </div>
+      </div>
+      <button class="flex items-center justify-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium self-end mt-2">
+        <span class="material-icons text-base">visibility</span>
+        مشاهده
+      </button>
+    </div>
+  </div> {% endcomment %}
+
+      <!-- مدال افزودن مسیر -->
+
+  <div id="routeModal" class="modal ">
+        <div class="modal-content">
+          <button class="close-btn" onclick="document.getElementById('routeModal').classList.remove('is-open')">
+            <span class="material-icons">close</span>
+          </button>
+          <h3 class="text-xl font-bold mb-4 text-indigo-700">افزودن مسیر</h3>
+          <form class="space-y-4" method="POST" action="{% url 'events:path_create' %}">
+            {% csrf_token %}
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">نام مسیر</label>
+              <input name="name" type="text" class="w-full border border-gray-300 rounded-md px-3 py-2">
+            </div>
+            <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">رویداد</label>
+            <select name="related_event" class="text-gray-700 w-full border border-gray-300 rounded-md px-3 py-2 text-sm requierd">
+              {% for event in events %}
+                <option value="{{ event.id }}" class="text-sm text-gray-700 ">{{ event.name }}</option>
+              {% endfor %}
+            </select>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">توضیحات مسیر</label>
+              <textarea name="path_description" class="w-full border border-gray-300 rounded-md px-3 py-2"></textarea>
+            </div>
+            <div class="space-y-2">
+              <label class="block text-sm font-medium text-gray-700 mb-1">گزینه‌ها</label>
+              <div class="flex items-center">
+                <label class="flex items-center gap-2 text-sm text-gray-600">
+                <input name="allow_duplicate_checkin" type="checkbox" class="form-checkbox" > اجازه چک‌این تکراری
+                </label>
+              </div>
+              <div class="flex items-center">
+                <label class="flex items-center gap-2 text-sm text-gray-600">
+                <input name="enforce_checkpoint_order" type="checkbox" class="form-checkbox"> ترتیب چک‌پوینت‌ها مهم باشد 
+                </label>
+              </div>
+            </div>
+            <div class="flex justify-end">
+              <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700">ثبت</button>
+            </div>
+          </form>
+        </div>
+      </div>
+{% endblock %}
+
+{% block extra_scripts %}
+
+<script>
+function togglePathStatus(pathId, action) {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+        fetch("{% url 'events:path_toggle_status' %}", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken,
+            },
+            body: JSON.stringify({
+                path_id: pathId,
+                action: action,
+            }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const path = data.path;
+                window.location.reload();
+            } else {
+                alert('خطا: ' + (data.error || 'عملیات ناموفق بود.'));
+            }
+        })
+        .catch(error => {
+            alert('خطا در ارسال درخواست: ' + error);
+        });
+    }
+
+function confirmDelete(pathId, eventId) {
+    if (confirm("آیا از حذف این مسیر مطمئن هستید؟")) {
+      fetch(`/events/paths/delete/${pathId}/`, {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': '{{ csrf_token }}',
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ 'event': eventId })
+      })
+      .then(response => response.json())
+      .then(data => {
+        window.location.reload();
+      })
+    }
+  }
+
+</script>
+{% endblock %}

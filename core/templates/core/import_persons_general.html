@@ -1,0 +1,229 @@
+{% extends 'core/base.html' %}
+{% load custom_tags %}
+
+{% block title %}وارد کردن افراد{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .fade-in {
+    opacity: 0;
+    animation: fadeIn 0.5s ease forwards;
+  }
+  @keyframes fadeIn {
+    to { opacity: 1; }
+  }
+
+  .tooltip {
+    position: relative;
+  }
+  .tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: -30px;
+    right: 0;
+    background: #4b5563;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+    font-family: Vazir, sans-serif;
+  }
+
+  .header-tooltip .group:hover .tooltip-content {
+    opacity: 1;
+  }
+  .tooltip-content {
+    position: absolute;
+    top: 100%;
+    margin-top: 8px;
+    right: 0;
+    background: #1F2937;
+    color: white;
+    padding: 8px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    max-width: 300px;
+    min-width: 120px;
+    text-align: right;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 50;
+    font-family: Vazir, sans-serif;
+  }
+
+  input[list]::-webkit-calendar-picker-indicator { display: none; }
+  input[list] { appearance: none; -webkit-appearance: none; }
+
+  .card {
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  {% comment %} .card:hover {
+    transform: scale(1.03);
+    box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  } {% endcomment %}
+
+  input, select {
+    border: 1px solid #D1D5DB;
+    border-radius: 0.375rem;
+    background-color: rgb(249 250 251 / var(--tw-bg-opacity, 1));
+    padding: 0.5rem 0.75rem;
+    font-family: Vazir, sans-serif;
+    transition: all 0.2s;
+  }
+  input:focus, select:focus {
+    outline: none;
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3);
+  }
+
+  .form-checkbox {
+    border-radius: 0.25rem;
+    border: 1px solid #D1D5DB;
+    transition: all 0.2s;
+  }
+  .form-checkbox:checked {
+    background-color: #4F46E5;
+    border-color: #4F46E5;
+  }
+  .form-checkbox:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.3);
+  }
+
+  button {
+    background-color: #4F46E5;
+    color: white;
+    padding: 0.5rem 1.5rem;
+    border-radius: 0.75rem;
+    font-family: Vazir, sans-serif;
+    transition: background-color 0.2s, transform 0.2s;
+  }
+  button:hover {
+    background-color: #4338CA;
+    transform: translateY(-2px);
+  }
+
+  .message-box {
+    background: #EEF2FF;
+    border: 1px solid #C7D2FE;
+    color: #4F46E5;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    font-family: Vazir, sans-serif;
+  }
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    font-family: Vazir, sans-serif;
+  }
+  .error-box {
+    background: #FEF2F2;
+    border: 1px solid #FCA5A5;
+    color: #B91C1C;
+    border-radius: 0.75rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+    font-family: Vazir, sans-serif;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<header class="mb-6 ">
+  <div class="flex justify-between items-center flex-wrap gap-3 min-w-0">
+    <div class="min-w-0">
+      <div class="flex items-center gap-2 min-w-0">
+        <h1 class="text-lg sm:text-2xl font-bold text-indigo-700 truncate" title="وارد کردن افراد">وارد کردن افراد</h1>
+        <div class="relative group header-tooltip">
+        </div>
+      </div>
+    </div>
+    
+  </div>
+</header>
+
+<div class="fade-in bg-indigo-50 border border-indigo-200 rounded-xl shadow-md p-4 mb-6 flex items-center gap-3 text-indigo-800">
+  <span class="material-icons text-indigo-600">info</span>
+  <div class="flex-1 text-sm font-medium">
+    ستون های اضافه به عنوان متا دیتای شخص ذخیره خواهند شد. در صورت تمایل به ذخیره سازی به عنوان متادیتای شخص-رویداد، به مدیریت اشخاص در صفحه رویداد مراجعه کنید.
+  </div>
+  <button onclick="this.parentElement.classList.add('hidden')" class="p-0 pl-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700 transition" title="بستن">
+    <span class="material-icons text-base">close</span>
+  </button>
+</div>
+  {% if errors %}
+    <div class="error-box fade-in animation-delay-100">
+      <h3 class="font-bold mb-2 flex items-center gap-2">
+        <span class="material-icons text-base text-red-800">error</span> خطاها
+      </h3>
+      <ul class="list-disc pr-5 space-y-1 text-sm">
+        {% for error in errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="space-y-6">
+    {% csrf_token %}
+
+    <div class="card bg-white p-4 rounded-xl border border-indigo-200 fade-in animation-delay-200">
+      <label class="block text-sm font-medium text-gray-700 mb-2 flex items-center gap-2">
+        <span class="material-icons text-base text-indigo-600">upload_file</span>
+        فایل اکسل
+        <span class="text-xs text-gray-500 tooltip" data-tooltip="حداکثر حجم فایل: {{ max_file_size|filesizeformat }}، حداکثر ردیف: {{ max_rows }}">(راهنما)</span>
+      </label>
+      <input type="file" name="excel_file" accept=".xls,.xlsx" required
+             class="block w-full  border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+             {% if form_data.excel_file %}value="{{ form_data.excel_file }}"{% endif %}>
+      <p class="text-xs text-gray-500 mt-1">فقط فایل‌های .xls یا .xlsx با حداکثر {{ max_rows }} ردیف</p>
+    </div>
+
+    <div class="card bg-white p-4 rounded-xl border border-indigo-200 fade-in animation-delay-300">
+      <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+        <span class="material-icons text-base text-indigo-600">swap_horiz</span>
+        تطبیق ستون‌ها با فیلدهای شخص
+      </h3>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {% for field in person_fields %}
+          <div>
+            <label class="block  text-sm font-medium text-gray-700 mb-1">{{ field_verbose|lookup:field|default:field }}</label>
+            <input type="text" name="{{ field }}_column"
+                   value="{% if form_data %}{{ form_data|lookup:field }}{% endif %}"
+                   placeholder="مثلاً: {{ field_verbose|lookup:field|default:field }}"
+                   class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          </div>
+        {% endfor %}
+      </div>
+      <p class="text-xs text-gray-500 mt-2">نام ستون‌های فایل اکسل را وارد کنید. ستون‌های اضافی به‌عنوان متادیتا ذخیره می‌شوند.</p>
+    </div>
+
+    <div class="card bg-white p-4 rounded-xl border border-indigo-200 fade-in animation-delay-400">
+      <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+        <span class="material-icons text-base text-indigo-600">fingerprint</span>
+        فیلدهای یکتا (برای جلوگیری از تکراری‌ها)
+        <span class="text-xs text-gray-500 tooltip" data-tooltip="حداقل یک فیلد را انتخاب کنید">(راهنما)</span>
+      </h3>
+      <div class="flex flex-wrap gap-4">
+        {% for field in person_fields %}
+          <label class="inline-flex items-center space-x-2 rtl:space-x-reverse">
+            <input type="checkbox" name="matching_fields" value="{{ field }}"
+                   {% if form_data.matching_fields and field in form_data.matching_fields %}checked{% endif %}
+                   class="form-checkbox text-indigo-600 focus:ring-indigo-500">
+            <span class="text-sm text-gray-600">{{ field_verbose|lookup:field|default:field }}</span>
+          </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <div class=" flex justify-end fade-in animation-delay-500">
+      <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-lg shadow transition flex items-center gap-2">
+        <span class="material-icons text-base">cloud_upload</span>
+        شروع وارد کردن
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

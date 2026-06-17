@@ -1,0 +1,16 @@
+{% extends 'core/settings/base.html' %}
+
+{% block settings_title %}تایید حذف نقش{% endblock %}
+
+{% block settings_content %}
+<form method="post">
+    {% csrf_token %}
+    <p class="text-lg">آیا از حذف نقش "<span class="font-semibold">{{ object.name }}</span>" مطمئن هستید؟</p>
+    <p class="text-sm text-gray-600 mt-2">این عملیات غیرقابل بازگشت است و تمام دسترسی‌های کاربرانی که فقط در این نقش هستند، از آن‌ها گرفته می‌شود.</p>
+    
+    <div class="flex justify-end mt-6 gap-3">
+        <a href="{% url 'accounts:role_list' %}" class="px-4 py-2 text-sm bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300">انصراف</a>
+        <button type="submit" class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700">بله، حذف کن</button>
+    </div>
+</form>
+{% endblock %}

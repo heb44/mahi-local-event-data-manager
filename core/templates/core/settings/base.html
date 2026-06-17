@@ -1,0 +1,65 @@
+{% extends 'core/base.html' %}
+
+{% block title %}تنظیمات{% endblock %}
+
+{% block extra_styles %}
+<style>
+  .fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  /* Hide scrollbar for Chrome, Safari and Opera */
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+  /* Hide scrollbar for IE, Edge and Firefox */
+  .scrollbar-none {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="flex justify-between items-center mb-6 gap-2 min-w-0">
+    <h2 class="text-lg sm:text-2xl font-bold text-gray-800 truncate" title="تنظیمات">تنظیمات</h2>
+  </div>
+
+<div class="w-full fade-in">
+  <!-- Main Settings Content Container -->
+  <div class="flex flex-col md:flex-row gap-6">
+    <!-- Secondary Sidebar for Settings -->
+    <aside class="w-full md:w-64 bg-gray-50 shadow-sm p-4 rounded-xl h-fit shrink-0">
+      <nav class="flex flex-row md:flex-col gap-2 overflow-x-auto pb-2 md:pb-0 scrollbar-none">
+        <a href="{% url 'accounts:settings_general'%}" class="flex items-center gap-2 text-gray-700 hover:text-indigo-600 px-4 py-2.5 font-semibold rounded-lg transition whitespace-nowrap text-sm shrink-0 {% if active_section == 'general' %}bg-indigo-50 text-indigo-600 border border-indigo-100/50{% else %}bg-white border border-gray-200/50 md:bg-transparent md:border-0 hover:bg-gray-100/50{% endif %}">
+          <span class="material-icons text-base">settings</span>
+          <span>تنظیمات عمومی</span>
+        </a>
+        
+         {% if perms.auth.view_group %}
+        <a href="{% url 'accounts:role_list' %}" class="flex items-center gap-2 text-gray-700 hover:text-indigo-600 px-4 py-2.5 font-semibold rounded-lg transition whitespace-nowrap text-sm shrink-0 {% if active_section == 'roles' %}bg-indigo-50 text-indigo-600 border border-indigo-100/50{% else %}bg-white border border-gray-200/50 md:bg-transparent md:border-0 hover:bg-gray-100/50{% endif %}">
+            <span class="material-icons text-base">shield</span>
+            <span>نقش‌ها و دسترسی‌ها</span>
+        </a>
+        {% endif %}
+        
+        <a href="{% url 'accounts:settings_checkin'%}" class="flex items-center gap-2 text-gray-700 hover:text-indigo-600 px-4 py-2.5 font-semibold rounded-lg transition whitespace-nowrap text-sm shrink-0 {% if active_section == 'checkin' %}bg-indigo-50 text-indigo-600 border border-indigo-100/50{% else %}bg-white border border-gray-200/50 md:bg-transparent md:border-0 hover:bg-gray-100/50{% endif %}">
+          <span class="material-icons text-base">approval</span>
+          <span>چک‌این</span>
+        </a>
+      </nav>
+    </aside>
+
+    <!-- Content Container -->
+    <div class="flex-1">
+      <div class=" bg-white p-6 rounded-xl shadow-md h-fit">
+        <h2 class="text-md sm:text-xl font-bold mb-4 text-indigo-700 truncate">{% block settings_title %}{% endblock %}</h2>
+        {% block settings_content %}{% endblock %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

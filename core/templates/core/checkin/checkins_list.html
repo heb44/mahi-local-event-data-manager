@@ -1,0 +1,368 @@
+{% extends 'core/base.html' %}
+
+{% block title %}چک‌این‌ها{% endblock %}
+{% load jalali_filters %}
+{% block content %}
+<div class="flex justify-between items-center mb-6 gap-2 min-w-0">
+  <h2 class="text-lg sm:text-2xl font-bold text-gray-900 truncate" title="چک‌این‌ها">چک‌این‌ها</h2>
+</div>
+
+<div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-4">
+    <div class="flex gap-2 items-center w-full lg:w-auto lg:min-w-[300px]">
+        <select id="bulkAction" class="text-sm bg-gray-50 border border-gray-300 rounded-lg p-2 w-3/5">
+            <option value="">انتخاب عملیات</option>
+            <option value="delete">حذف</option>
+        </select>
+        <button onclick="executeBulkAction()" class="bg-indigo-600 text-white rounded-lg p-2 hover:bg-indigo-700 transition w-2/5">اجرای عملیات</button>
+    </div>
+  
+    <div class="flex flex-col sm:flex-row gap-4 w-full lg:w-auto lg:justify-end">
+        <div class="flex gap-2 items-center w-full sm:w-[320px] shrink-0">
+            <select id="order-field" class="text-sm bg-gray-50 border border-gray-300 rounded-lg p-2 w-[50%]">
+                <option value="">مرتب سازی بر اساس</option>
+                <option value="timestamp" {% if order_by == 'timestamp' %}selected{% endif %}>زمان</option>
+                <option value="person" {% if order_by == 'person' %}selected{% endif %}>شخص</option>
+                <option value="event" {% if order_by == 'event' %}selected{% endif %}>رویداد</option>
+            </select>
+            <select id="order-direction" class="text-sm bg-gray-50 border border-gray-300 rounded-lg p-2 w-[35%]">
+                <option value="asc" {% if direction == 'asc' %}selected{% endif %}>صعودی</option>
+                <option value="desc" {% if direction == 'desc' %}selected{% endif %}>نزولی</option>
+            </select>
+            <button onclick="triggerSort()" class="bg-indigo-600 text-white rounded-lg p-2 hover:bg-indigo-700 transition w-[15%] material-icons">sort_by_alpha</button>
+        </div>
+        <div class="relative w-full sm:max-w-[400px]">
+            <input type="text" id="searchInput" placeholder="جستجو..." value="{{ search_query|default:'' }}"
+                class="w-full p-3 pl-10 pr-10 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 font-vazir">
+            <span class="material-icons absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer" onclick="triggerSearch()">search</span>
+            <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer" onclick="toggleSearchSettings()">settings</span>
+            
+            <div id="searchSettings" class="hidden absolute top-[calc(100%+0.5rem)] left-0 bg-white border border-gray-300 rounded-lg shadow-lg p-4 z-50 w-full max-w-md h-[400px] overflow-y-auto">
+                <h4 class="text-sm font-semibold text-gray-700 mb-2">تنظیمات جستجو</h4>
+                <div class="border-t border-gray-200 pt-3">
+                    <h5 class="text-sm font-medium text-gray-800 mb-2">فیلترهای اختصاصی</h5>
+                    <div class="mb-3">
+                        <label for="eventFilter" class="block text-sm font-medium text-gray-700 mb-1">رویداد</label>
+                        <select id="eventFilter" name="event" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none">
+                            <option value="">همه رویدادها</option>
+                            {% for event in all_events %}<option value="{{ event.id }}" {% if event.id|stringformat:"s" == selected_event_id %}selected{% endif %}>{{ event.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                            <label for="userFilter" class="block text-sm font-medium text-gray-700 mb-1">کاربر ثبت‌کننده</label>
+                            <select id="userFilter" name="user_id" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none">
+                                <option value="">همه کاربران</option>
+                                {% for user in all_users %}
+                                <option value="{{ user.id }}" {% if user.id|stringformat:"s" == selected_user_id %}selected{% endif %}>{{ user.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="statusFilter" class="block text-sm font-medium text-gray-700 mb-1">وضعیت/نتیجه</label>
+                            <select id="statusFilter" name="status" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus-outline-none">
+                                <option value="">همه وضعیت‌ها</option>
+                                <option value="invalid" {% if selected_status == 'invalid' %}selected{% endif %}>ناصحیح</option>
+                                <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>در انتظار</option>
+                                <option value="approved" {% if selected_status == 'approved' %}selected{% endif %}>پذیرفته شده</option>
+                                <option value="rejected" {% if selected_status == 'rejected' %}selected{% endif %}>رد شده</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 mb-3">
+                            <div>
+                                <label for="startDateFilter" class="block text-sm font-medium text-gray-700 mb-1">از تاریخ</label>
+                                <input type="date" id="startDateFilter" value="{{ start_date|default:'' }}" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none">
+                            </div>
+                            <div>
+                                <label for="endDateFilter" class="block text-sm font-medium text-gray-700 mb-1">تا تاریخ</label>
+                                <input type="date" id="endDateFilter" value="{{ end_date|default:'' }}" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none">
+                            </div>
+                        </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">چک‌پوینت‌ها</label>
+                        <div class="max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-2 bg-gray-50 space-y-1">
+                            {% for checkpoint in all_checkpoints %}{% ifchanged checkpoint.path.event %}<h5 class="text-xs font-bold text-indigo-600 mt-2 pt-1 border-t border-indigo-100 first:mt-0 first:border-t-0">{{ checkpoint.path.event.name }}</h5>{% endifchanged %}<label class="flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-100 p-1 rounded"><input type="checkbox" name="cp_ids" value="{{ checkpoint.id }}" {% if checkpoint.id in selected_cp_ids %}checked{% endif %} class="text-indigo-600"> {{ checkpoint.name }}</label>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="border-t border-gray-200 mt-3 pt-3">
+                    <h5 class="text-sm font-medium text-gray-800 mb-2">جستجوی متنی در</h5>
+                    <label class="flex items-center gap-2 mb-2 font-vazir text-sm text-gray-700"><input type="checkbox" id="searchPerson" {% if 'person' in search_fields_list %}checked{% endif %} class="text-indigo-600"> شخص</label>
+                    <label class="flex items-center gap-2 mb-2 font-vazir text-sm text-gray-700"><input type="checkbox" id="searchUser" {% if 'user' in search_fields_list %}checked{% endif %} class="text-indigo-600"> کاربر</label>
+                    <label class="flex items-center gap-2 mb-2 font-vazir text-sm text-gray-700"><input type="checkbox" id="searchDescription" {% if 'description' in search_fields_list %}checked{% endif %} class="text-indigo-600"> توضیحات</label>
+                </div>
+                <div class="flex mt-2 flex-col rounded-lg border border-gray-300 p-3">
+                    <label class="flex items-center gap-2 mb-2 font-vazir text-sm text-gray-700"><input type="checkbox" id="searchData" {% if 'data' in search_fields_list %}checked{% endif %} class="text-indigo-600"> جستجو در داده‌ها</label>
+                    <div class="mt-2"><label class="mb-1 block text-sm text-gray-700 font-vazir">نام فیلد</label><input type="text" id="dataKey" placeholder="مثال: سن" value="{{ data_key|default:'' }}" class="w-full p-2 border border-gray-300 rounded-lg font-vazir text-sm focus:outline-none"></div>
+                    <div class="mt-2"><label class="mb-1 block text-sm text-gray-700 font-vazir">مقدار</label><input type="text" id="dataValue" placeholder="مثال: ۲۳" value="{{ data_value|default:'' }}" class="w-full p-2 border border-gray-300 rounded-lg font-vazir text-sm focus:outline-none"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-lg shadow-lg border border-gray-200 overflow-x-auto fade-in pb-1">
+    <table class="w-full text-right border-collapse min-w-[1400px] responsive-table">
+        <thead class="bg-indigo-100 text-indigo-800">
+            <tr>
+                <th class="p-3 text-sm font-semibold text-center border-b border-l border-indigo-200 w-12"><input type="checkbox" id="selectAll"></th>
+                <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">ردیف</th>
+                <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">شناسه</th>
+                <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">شخص</th>
+                <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">رویداد</th>
+                <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">چک‌پوینت</th>
+                <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">کاربر</th>
+                <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">زمان</th>
+                <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">وضعیت</th>
+                <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">نتیجه</th>
+                <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">توضیحات</th>
+                <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200 min-w-[250px]">داده‌ها</th>
+                <th class="p-3 text-sm font-semibold text-center border-b border-r border-indigo-200">عملیات</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for checkin in page_obj %}
+            <tr class="{% cycle 'bg-gray-100' 'bg-white' %} hover:bg-indigo-50 transition">
+                <td class="p-2 text-center border-b border-l bg-indigo-100/50 border-gray-200 checkbox-cell"><input type="checkbox" name="selected_ids" value="{{ checkin.id }}" class="item-checkbox"></td>
+                <td class="p-2 text-sm text-gray-700 text-center border-b border-x border-gray-200" data-label="ردیف">{{ page_obj.start_index|add:forloop.counter0 }}</td>
+                <td class="p-2 text-sm text-gray-700 text-center border-b border-x border-gray-200" data-label="شناسه">{{ checkin.id }}</td>
+                <td class="p-2 text-sm text-gray-700 text-center border-b border-x whitespace-nowrap border-gray-200" data-label="شخص" title="شناسه: {{checkin.person_id}}">{{ checkin.person|default:"-" }}</td>
+                <td class="p-2 text-sm font-semibold text-gray-800 text-center border-b border-x border-gray-200" data-label="رویداد" title="شناسه: {{checkin.checkpoint.path.event_id}}">{{ checkin.checkpoint.path.event.name|default:"-" }}</td>
+                <td class="p-2 text-sm text-gray-700 text-center border-b border-x border-gray-200" data-label="چک‌پوینت" title="شناسه: {{checkin.checkpoint_id}}">{{ checkin.checkpoint.name|default:"-" }}</td>
+                <td class="p-2 text-sm text-gray-700 text-center border-b border-x border-gray-200" data-label="کاربر" title="شناسه: {{checkin.user_id}}">{{ checkin.user.username|default:"-" }}</td>
+                <td class="p-2 text-sm text-gray-700 text-center border-b border-x whitespace-nowrap border-gray-200" data-label="زمان" dir="ltr">{{ checkin.timestamp|to_jalali }}</td>
+                <td class="p-2 text-sm text-center border-b border-x border-gray-200" data-label="وضعیت">
+                    {% if checkin.is_valid %}<span class="inline-flex items-center gap-1 bg-sky-100 text-sky-700 px-2 py-1 rounded-full text-xs font-semibold"><span class="material-icons text-base">check_circle</span> صحیح</span>
+                    {% else %}<span class="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-semibold"><span class="material-icons text-base">unpublished</span> ناصحیح</span>{% endif %}
+                </td>
+                <td class="p-2 text-sm text-center border-b border-x whitespace-nowrap border-gray-200" data-label="نتیجه">
+                    {% if not checkin.is_valid %}
+                        <span>-</span>
+                    {% elif checkin.pending %}
+                        <span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-semibold"><span class="material-icons text-base">hourglass_empty</span> در انتظار</span>
+                    {% elif checkin.is_approved %}
+                        <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-semibold"><span class="material-icons text-base">check</span> پذیرفته شده</span>
+                    {% else %}
+                        <span class="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-semibold "><span class="material-icons text-base">close</span> رد شده</span>
+                    {% endif %}
+                </td>
+                <td class="p-2 text-sm text-gray-700 border-b border-x whitespace-pre-wrap text-center border-gray-200" data-label="توضیحات" title="{{ checkin.description}}">{{ checkin.description|truncatewords:10|default:"-" }}</td>
+                <td class="p-1 border-b border-x border-gray-200" data-label="داده‌ها">
+                    <div class="flex flex-wrap gap-1 p-1 text-xs overflow-x-auto ">
+                    {% for data in checkin.prefetched_data_list %}<div class="inline-block py-1 px-2 rounded-lg bg-gray-200 border border-gray-300 text-gray-800 "><strong>{{ data.event_schema.column_name }}:</strong><span class="mr-1">{% if data.text_value is not None %}{{ data.text_value }}{% endif %}{% if data.num_value is not None %}{{ data.num_value }}{% endif %}{% if data.bool_value is not None %}{{ data.bool_value|yesno:"بله,خیر" }}{% endif %}{% if data.date_value is not None %}{{ data.date_value|to_jalali }}{% endif %}</span></div>{% empty %}<span class="text-center w-full">-</span>{% endfor %}
+                    </div>
+                </td>
+                <td class="p-2 text-center border-b border-r border-gray-200" data-label="عملیات">
+                    <div class="flex gap-3 justify-center items-center">
+                        <button 
+                            onclick="confirmDelete(this, {{ checkin.id }})" 
+                            data-delete-url="{% url 'operations:checkin_delete' checkin.id %}" 
+                            class="text-red-500 hover:text-red-700" 
+                            title="حذف">
+                            <span class="material-icons text-lg">delete</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="13" class="text-center text-gray-500 py-6">هیچ چک‌اینی با این مشخصات یافت نشد.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% include 'core/partials/unified_pagination.html' %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// این بخش اسکریپت کامل و صحیح از پاسخ‌های قبلی است
+function toggleSearchSettings() { document.getElementById('searchSettings').classList.toggle('hidden'); }
+function triggerSort() { triggerSearch(); }
+
+function buildUrlParams() {
+    const params = new URLSearchParams();
+    
+    const query = document.getElementById('searchInput').value.trim();
+    if (query) params.append('q', query);
+    
+    let searchFields = [];
+    if (document.getElementById('searchPerson').checked) searchFields.push('person');
+    if (document.getElementById('searchUser').checked) searchFields.push('user');
+    if (document.getElementById('searchDescription').checked) searchFields.push('description');
+    if (document.getElementById('searchData').checked) searchFields.push('data');
+    if (searchFields.length > 0) params.append('sf', searchFields.join(','));
+    
+    const eventId = document.getElementById('eventFilter').value;
+    if (eventId) params.append('event', eventId);
+    
+    document.querySelectorAll('input[name="cp_ids"]:checked').forEach(cb => { params.append('cp_ids', cb.value); });
+    
+    const dataKey = document.getElementById('dataKey').value.trim();
+    if (dataKey) params.append('dk', dataKey);
+    const dataValue = document.getElementById('dataValue').value.trim();
+    if (dataValue) params.append('dv', dataValue);
+
+    const userId = document.getElementById('userFilter').value;
+    if (userId) params.append('user_id', userId);
+
+    const startDate = document.getElementById('startDateFilter').value;
+    if (startDate) params.append('start_date', startDate);
+
+    const endDate = document.getElementById('endDateFilter').value;
+    if (endDate) params.append('end_date', endDate);
+
+    const status = document.getElementById('statusFilter').value;
+    if (status) params.append('status', status);
+
+    const orderField = document.getElementById('order-field').value;
+    if (orderField) params.append('ob', orderField);
+    
+    const orderDirection = document.getElementById('order-direction').value;
+    if (orderDirection) params.append('dir', orderDirection);
+    
+    return params.toString();
+}
+
+function triggerSearch() {
+    const params = buildUrlParams();
+    window.location.href = `?${params}`;
+}
+
+document.querySelectorAll('#searchInput, #dataKey, #dataValue').forEach(input => {
+    input.addEventListener('keypress', e => { if (e.key === 'Enter') { e.preventDefault(); triggerSearch(); } });
+});
+
+document.getElementById('selectAll').addEventListener('change', toggleSelectAll);
+
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const itemCheckboxes = document.querySelectorAll('.item-checkbox');
+    itemCheckboxes.forEach(checkbox => { checkbox.checked = selectAllCheckbox.checked; });
+}
+
+function confirmDelete(buttonElement, checkinId) {
+    if (confirm(`آیا از حذف چک‌این با شناسه ${checkinId} مطمئن هستید؟`)) {
+        const url = buttonElement.getAttribute('data-delete-url');
+        const csrfToken = '{{ csrf_token }}';
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken,
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                buttonElement.closest('tr').remove();
+            } else {
+                alert('خطا در حذف: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('یک خطای غیرمنتظره در ارتباط با سرور رخ داد.');
+        });
+    }
+}
+
+function executeBulkAction() {
+    const action = document.getElementById('bulkAction').value;
+    if (!action) {
+        alert('لطفاً یک عملیات را انتخاب کنید.');
+        return;
+    }
+    
+    const selectedIds = Array.from(document.querySelectorAll('.item-checkbox:checked')).map(cb => cb.value);
+    if (selectedIds.length === 0) {
+        alert('لطفاً حداقل یک مورد را انتخاب کنید.');
+        return;
+    }
+
+    if (action === 'delete') {
+        if (confirm(`آیا از حذف ${selectedIds.length} مورد انتخاب شده مطمئن هستید؟`)) {
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = "{% url 'operations:checkin_bulk_action' %}";
+            
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = 'csrfmiddlewaretoken';
+            csrfInput.value = '{{ csrf_token }}';
+            form.appendChild(csrfInput);
+
+            const actionInput = document.createElement('input');
+            actionInput.type = 'hidden';
+            actionInput.name = 'action';
+            actionInput.value = action;
+            form.appendChild(actionInput);
+
+            selectedIds.forEach(id => {
+                const idInput = document.createElement('input');
+                idInput.type = 'hidden';
+                idInput.name = 'selected_ids';
+                idInput.value = id;
+                form.appendChild(idInput);
+            });
+
+            document.body.appendChild(form);
+            form.submit();
+        }
+    }
+}
+
+window.onclick = function(event) {
+    if (!event.target.closest('.relative')) {
+        const settings = document.getElementById('searchSettings');
+        if (settings && !settings.classList.contains('hidden')) {
+            settings.classList.add('hidden');
+        }
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const table = document.querySelector('table');
+    if (!table) return;
+    const MIN_WIDTH = 40; const MAX_WIDTH = 600;
+    const headers = table.querySelectorAll('thead th');
+    headers.forEach((th, i) => {
+        if (i === headers.length - 1) return;
+        const handle = document.createElement('span');
+        handle.className = 'resize-handle absolute top-0 right-0 w-1.5 h-full cursor-col-resize bg-transparent hover:bg-indigo-400 transition';
+        handle.style.right = '-3px';
+        handle.addEventListener('mousedown', (e) => initResize(e, i));
+        th.style.position = 'relative';
+        th.appendChild(handle);
+    });
+    let startX, startWidth, colIndex;
+    function initResize(e, index) {
+        e.preventDefault();
+        startX = e.clientX;
+        colIndex = index;
+        const th = headers[index];
+        startWidth = th.offsetWidth;
+        document.addEventListener('mousemove', resizeColumn);
+        document.addEventListener('mouseup', stopResize, { once: true });
+    }
+    function resizeColumn(e) {
+        let newWidth = startWidth + (e.clientX - startX);
+        newWidth = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, newWidth));
+        const th = headers[colIndex];
+        th.style.width = newWidth + 'px';
+        th.style.minWidth = newWidth + 'px';
+        th.style.maxWidth = newWidth + 'px';
+        const rows = table.querySelectorAll('tr');
+        rows.forEach(row => {
+            const cell = row.cells[colIndex];
+            if (cell) {
+                cell.style.width = newWidth + 'px';
+                cell.style.minWidth = newWidth + 'px';
+                cell.style.maxWidth = newWidth + 'px';
+            }
+        });
+    }
+    function stopResize() { document.removeEventListener('mousemove', resizeColumn); }
+});
+</script>
+{% endblock %}

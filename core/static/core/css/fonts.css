@@ -1,0 +1,72 @@
+@font-face {
+  font-family: 'IRANYekan';
+  src: url('../fonts/IRANYEKANLIGHT.TTF') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'IRANYekan';
+  src: url('../fonts/IRANYEKANREGULAR.TTF') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'IRANYekan';
+  src: url('../fonts/IRANYEKANMEDIUM.TTF') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'IRANYekan';
+  src: url('../fonts/IRANYEKANBOLD.TTF') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'IRANYekan';
+  src: url('../fonts/IRANYEKANEXTRABOLD.TTF') format('truetype');
+  font-weight: 800;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'IRANYekan';
+  src: url('../fonts/IRANYEKANBLACK.TTF') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+}
+@font-face {
+  font-family: 'IRANYekan';
+  src: url('../fonts/IRANYEKANEXTRABLACK.TTF') format('truetype');
+  font-weight: 950;
+  font-style: normal;
+}
+
+
+
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  src:
+    url('../fonts/MaterialIcons-Regular.woff2') format('woff2'),
+    url('../fonts/MaterialIcons-Regular.ttf') format('truetype');
+}
+
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal; 
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: 'liga';
+}

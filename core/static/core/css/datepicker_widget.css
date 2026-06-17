@@ -1,0 +1,104 @@
+/* ======================================================================== */
+/* JalaliDatePicker - Final Refined Theme
+    Focus: Monochromatic Indigo palette, fixed secondary buttons, and improved padding.
+*/
+/* ======================================================================== */
+
+:root {
+    /* پالت رنگی جدید بر اساس Indigo با شدت‌های مختلف */
+    --jdp-indigo-primary: #4f46e5;      /* Indigo-600 برای بخش‌های اصلی */
+    --jdp-indigo-text-on-primary: #ffffff;
+    --jdp-indigo-hover-bg: #e0e7ff;   /* Indigo-100 برای هاور */
+    --jdp-indigo-today-bg: #eef2ff;    /* Indigo-50 برای پس‌زمینه امروز */
+
+    /* رنگ‌های خنثی برای متون و دکمه‌های فرعی */
+    --jdp-neutral-text-dark: #1f2937;
+    --jdp-neutral-text-light: #6b7280;
+    --jdp-neutral-bg: #f3f4f6;          /* Gray-100 */
+    --jdp-neutral-bg-hover: #e5e7eb;    /* Gray-200 */
+    --jdp-holiday-text: #ef4444;
+}
+
+/* ۱. افزایش فاصله داخلی (Padding) برای زیبایی بیشتر */
+jdp-container {
+    padding: 1rem; /* افزایش فاصله از لبه‌ها */
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
+/* استایل متون و انتخاب‌گرهای هدر */
+jdp-container .jdp-year > select,
+jdp-container .jdp-month > select {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--jdp-neutral-text-dark);
+}
+jdp-container .jdp-day-name {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--jdp-neutral-text-light);
+}
+
+/* استایل اصلی روزها */
+jdp-container .jdp-day {
+    font-size: 0.85rem;
+    color: var(--jdp-neutral-text-dark);
+    border-radius: 0.5rem !important;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+/* هاور روی روزها */
+jdp-container .jdp-day:not(.selected):hover {
+    background-color: var(--jdp-indigo-hover-bg);
+    color: var(--jdp-indigo-primary);
+}
+
+/* ۲. روز انتخاب شده با رنگ ثابت Indigo */
+jdp-container .jdp-day.selected {
+    background-color: var(--jdp-indigo-primary)!important;
+    color: var(--jdp-indigo-text-on-primary)!important;
+    font-weight: 700;
+
+}
+
+/* ۳. استایل "امروز" با پالت جدید Indigo */
+jdp-container .jdp-day.today {
+    background-color: var(--jdp-indigo-today-bg);
+    color: var(--jdp-indigo-primary);
+    font-weight: 700;
+}
+
+/* روزهای تعطیل */
+jdp-container .jdp-day.holly-day {
+    color: var(--jdp-holiday-text);
+}
+
+
+/* دکمه "امروز" در فوتر */
+jdp-container .jdp-btn-today {
+    background-color: var(--jdp-indigo-primary);
+    color: var(--jdp-indigo-text-on-primary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s ease;
+}
+jdp-container .jdp-btn-today:hover {
+    background-color: #4338ca; /* Indigo-700 */
+}
+
+/* ۴. اصلاح رنگ دکمه "خالی" و "بستن" به رنگ خنثی */
+jdp-container .jdp-btn-empty,
+jdp-container .jdp-btn-close {
+    background-color: var(--jdp-neutral-bg);
+    color: var(--jdp-neutral-text-light);
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-radius: 0.5rem;
+    transition: background-color 0.2s ease;
+}
+jdp-container .jdp-btn-empty:hover,
+jdp-container .jdp-btn-close:hover {
+    background-color: var(--jdp-neutral-bg-hover);
+}

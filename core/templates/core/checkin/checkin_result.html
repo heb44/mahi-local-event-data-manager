@@ -1,0 +1,186 @@
+
+{% load jalali_filters %}
+{% load custom_tags %}
+
+<div id='searchresult-{{ ci.checkpoint.id }}' class="flex flex-col gap-3">
+    {% for type, message in msgs %}
+        {% if type == 'info' %}
+            <div class="fade-in bg-indigo-50/50 border border-indigo-200 rounded-xl shadow-md p-4 flex items-center gap-3 text-indigo-800">
+                <span class="material-icons text-indigo-600">info</span>
+                <div class="flex-1 text-sm font-medium">{{ message }}</div>
+                <button onclick="this.parentElement.classList.add('hidden')" class="text-indigo-600 hover:bg-indigo-50/50 transition" title="بستن">
+                    <span class="material-icons text-base">close</span>
+                </button>
+            </div>
+        {% elif type == 'success' %}
+            <div class="fade-in bg-green-50 border border-green-200 rounded-xl shadow-md p-4  flex items-center gap-3 text-green-800">
+                <span class="material-icons text-green-600">check_circle</span>
+                <div class="flex-1 text-sm font-medium">{{ message }}</div>
+                <button onclick="this.parentElement.classList.add('hidden')" class="text-green-600 hover:bg-green-50 transition" title="بستن">
+                    <span class="material-icons text-base">close</span>
+                </button>
+            </div>
+        {% elif type == 'warn' %}
+            <div class="fade-in bg-yellow-50 border border-yellow-200 rounded-xl shadow-md p-4  flex items-center gap-3 text-yellow-800">
+                <span class="material-icons text-yellow-600">warning</span>
+                <div class="flex-1 text-sm font-medium">{{ message }}</div>
+                <button onclick="this.parentElement.classList.add('hidden')" class="text-yellow-600 hover:bg-yellow-50 transition" title="بستن">
+                    <span class="material-icons text-base">close</span>
+                </button>
+            </div>
+        {% elif type == 'error' %}
+            <div class="fade-in bg-red-50 border border-red-200 rounded-xl shadow-md p-4  flex items-center gap-3 text-red-800">
+                <span class="material-icons text-red-600">error</span>
+                <div class="flex-1 text-sm font-medium">{{ message }}</div>
+                <button onclick="this.parentElement.classList.add('hidden')" class="text-red-600 hover:bg-red-50 transition" title="بستن">
+                    <span class="material-icons text-base">close</span>
+                </button>
+            </div>
+        {% endif %}
+    {% endfor %}
+
+    <div class="flex flex-row items-start gap-3 w-full">
+        {% if is_valid %}
+        <div class="fade-in rounded-xl p-6 bg-indigo-50/50 border-indigo-500 border text-gray-700 {% if latest_checkins %} w-[70%] {% else %} w-full {% endif %}">
+            <form hx-post="{% url 'operations:checkin_perform' %}"
+                  hx-target="#searchresult-{{ ci.checkpoint.id }}"
+                  hx-swap="outerHTML"
+                  id="main-checkin-form-{{ ci.id }}"
+                  hx-include="#description-text">
+                {% csrf_token %}
+                <input type="hidden" name="cp_id" value="{{ cp_id }}">
+                <input type="hidden" name="ci" value="{{ci.id}}">
+                <input type="hidden" name="action" id="form-action-input-{{ ci.id }}">
+
+                <div class="flex flex-wrap flex-row gap-4">
+                    {% for cp_schema in cp_schemas %}
+                        {% if cp_schema.sch.event_schema.data_type != 'boolean' %}
+                            <div class="">
+                               <label for="field-id-{{ cp_schema.sch.event_schema.id }}" class="flex items-center gap-x-1 text-sm font-medium text-gray-700 mb-2 ">
+                                    <h6 class="truncate overflow-hidden max-w-[20ch]" title="{{ cp_schema.sch.event_schema.column_name }}">{{ cp_schema.sch.event_schema.column_name }}</h6>
+                                    {% if cp_schema.sch.event_schema.is_required %}<span class="text-red-600 text-xs">*</span>{% endif %}
+                                    {% if not cp_schema.sch.can_fill and not cp_schema.sch.can_edit%}<span class="material-icons text-gray-400 text-sm" title="غیرقابل ویرایش">lock</span>{% endif %}
+                                    {% if cp_schema.msg %}<span class="material-icons text-gray-400 text-sm" title="{{cp_schema.msg}}">error</span>
+                                    {% elif cp_schema.source == 'متادیتا (شخص)' or cp_schema.source == 'متادیتا (رویداد)' %} <span class="material-icons text-gray-400 text-sm" title="مقدار پیش بارگذاری شده: {% if cp_schema.sch.event_schema.data_type == 'date' %}{{ cp_schema.data|date:'Y-m-d' }}{% else %}{{cp_schema.data}}{% endif %}">browser_updated</span>{% endif %}
+                                </label>
+
+                                 {% comment %} <label for="field-id-{{ cp_schema.sch.event_schema.id }}" class="block text-sm font-medium text-gray-700 mb-2 ">
+                                    <h6 class="truncate overflow-hidden max-w-[20ch] inline-block" title="{{ cp_schema.sch.event_schema.column_name }}">{{ cp_schema.sch.event_schema.column_name }}</h6>
+                                    {% if cp_schema.sch.event_schema.is_required %}<span class="text-red-600 text-center text-xs mr-[2px]">*</span>{% endif %}
+                                    {% if not cp_schema.sch.can_fill and not cp_schema.sch.can_edit%}<span class="material-icons text-gray-400 text-sm align-middle " title="غیرقابل ویرایش">lock</span>{% endif %}
+                                    {% if cp_schema.msg %}<span class="material-icons text-gray-400 text-sm align-middle " title="{{cp_schema.msg}}">error</span>
+                                    {% elif cp_schema.source == 'متادیتا (شخص)' or cp_schema.source == 'متادیتا (رویداد)' %} <span class="material-icons text-gray-400 text-sm align-middle ml-1" title="مقدار پیش بارگذاری شده: {% if cp_schema.sch.event_schema.data_type == 'date' %}{{ cp_schema.data|date:'Y-m-d' }}{% else %}{{cp_schema.data}}{% endif %}">browser_updated</span>{% endif %}
+                                </label> {% endcomment %}
+                                {% if cp_schema.sch.event_schema.data_type == 'date' %}
+                                <input
+                                        type="text"
+                                        id="date-field-{{ cp_schema.sch.event_schema.id }}"
+                                        name="field_{{ cp_schema.sch.event_schema.id }}" {# <-- نام فیلد برای ارسال به بک‌اند #}
+                                        class="w-full text-gray-800 text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        placeholder="تاریخ را انتخاب کنید"
+                                        value="{% if cp_schema.data %}{{ cp_schema.data|to_jalali }}{% endif %}"
+                                        data-jdp 
+                                        autocomplete="off"
+                                        {% if not cp_schema.sch.can_fill and not cp_schema.sch.can_edit %}disabled readonly{% endif %}
+                                    >
+                                {% else %}
+                                    <input
+                                        value="{% if cp_schema.source == 'مقدار وارد شده' or cp_schema.source == 'مقدار پیشفرض' %}{{cp_schema.data}}{% endif %}"
+                                        title="{{cp_schema.source}}"
+                                        id="field-id-{{ cp_schema.sch.event_schema.id }}"
+                                        name="field_{{ cp_schema.sch.event_schema.id }}"
+                                        type="{{ cp_schema.sch.event_schema.data_type }}"
+                                        class="w-full text-gray-800 text-sm border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                        {% if cp_schema.sch.event_schema.data_type == 'text' %}placeholder="متن را وارد کنید"{% endif %}
+                                        {% if not cp_schema.sch.can_fill and not cp_schema.sch.can_edit %}disabled readonly{% endif %}
+                                    >
+                                {% endif %}
+                                {# ======================= پایان تغییرات ======================= #}
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                
+                {# بقیه فرم بدون تغییر باقی می‌ماند #}
+                {% if cp_schemas %}
+                <div class="w-full flex items-center flex-wrap gap-x-6 gap-y-2 pt-4 mt-4 border-t border-indigo-200">
+                    {% for cp_schema in cp_schemas %}
+                        {% if cp_schema.sch.event_schema.data_type == 'boolean' %}
+                            <div class="flex items-center gap-2">
+                                <input type="hidden" name="field_{{ cp_schema.sch.event_schema.id }}" value="False">
+                                <input
+                                    id="field-id-{{ cp_schema.sch.event_schema.id }}"
+                                    name="field_{{ cp_schema.sch.event_schema.id }}"
+                                    type="checkbox"
+                                    class="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                                    {% if cp_schema.data %}checked{% endif %}
+                                    {% if not cp_schema.sch.can_fill and not cp_schema.sch.can_edit %}disabled{% endif %}
+                                >
+                                <label for="field-id-{{ cp_schema.sch.event_schema.id }}" class="text-sm font-medium text-gray-700 cursor-pointer">
+                                    {% if not cp_schema.sch.can_fill and not cp_schema.sch.can_edit %}<span class="material-icons text-gray-400 text-sm align-middle ml-1" title="غیرقابل ویرایش">lock</span>{% endif %}
+                                    {{ cp_schema.sch.event_schema.column_name }}
+                                    {% if cp_schema.sch.event_schema.is_required %}<span class="text-red-500 text-center text-xs mr-[2px]">*</span>{% endif %}
+                                </label>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% endif %}
+                <div class="flex items-center justify-end mt-6 gap-2">
+                    <button type="button" onclick="openModal('reject', '{{ ci.id }}')" class="items-center bg-red-600 text-white rounded-md py-2 px-3 font-normal hover:bg-red-700 transition flex items-center gap-2">
+                        <span class="material-icons">close</span>
+                        رد
+                    </button>
+
+                    <button type="button" onclick="openModal('approve', '{{ ci.id }}')" class="items-center bg-green-600 text-white rounded-md py-2 px-3 font-normal hover:bg-green-700 transition flex items-center gap-2">
+                        <span class="material-icons">done</span>
+                        پذیرش
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+
+        {# بخش آخرین چک‌این‌ها بدون تغییر باقی می‌ماند #}
+        {% if latest_checkins %}
+        <div class="fade-in flex flex-col gap-3 p-5 bg-indigo-50/50 rounded-xl border border-indigo-500 {% if is_valid %} w-[30%] {% else %} w-full {% endif %}">
+            <h4 class="text-sm font-semibold text-gray-600">آخرین چک‌این‌های شما در این چک‌پوینت:</h4>
+            {% for checkin in latest_checkins %}
+                <div class="border {% if checkin.is_approved %} bg-green-50 border-green-600 {% else %} bg-red-50 border-red-600{% endif %} p-4 rounded-lg text-sm text-gray-700 space-y-1">
+                    <div class="flex items-center space-x-2 space-x-reverse">
+                        <span class="material-icons text-base">person</span>
+                        <span>شخص: <strong class="font-normal">{{checkin.person.name}} {{checkin.person.last_name}}</strong></span>
+                    </div>
+                    <div class="flex items-center space-x-2 space-x-reverse">
+                        <span class="material-icons text-base">schedule</span>
+                        <span>زمان: <strong class="font-normal">{{checkin.timestamp|to_jalali}}</strong></span>
+                    </div>
+                    <div class="flex items-center space-x-2 space-x-reverse">
+                        <span class="material-icons text-base">{% if checkin.is_approved %} check_circle {% else %} cancel {% endif %}</span>
+                        <span>وضعیت: 
+                            {% if checkin.is_approved %}
+                                <strong class="text-green-600 font-normal">پذیرفته شده</strong>
+                            {% else %}
+                                <strong class="text-red-600 font-normal">رد شده</strong>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="flex items-center space-x-2 space-x-reverse">
+                        <span class="material-icons text-base">description</span>
+                        <span>توضیحات: 
+                            <h6 class="font-normal truncate max-w-[30ch] overflow-hidden" title="{{checkin.description | default:'بدون توضیحات'}}">{{checkin.description | default:"بدون توضیحات"}}</h6>
+                        </span>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+    jalaliDatepicker.startWatch({
+        showTodayBtn: true,
+        autoClose: true
+    });
+</script>

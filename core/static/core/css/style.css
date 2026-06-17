@@ -1,0 +1,150 @@
+
+
+/* style.css */
+body {
+    font-family: 'iranyekan', sans-serif !important ;
+}
+
+/* Ripple effect */
+.ripple {
+    position: relative;
+    overflow: hidden;
+}
+
+.ripple::after {
+    content: "";
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    top: 0;
+    left: 0;
+    background: rgba(0, 0, 0, 0.1);
+    opacity: 0;
+    transition: opacity 0.3s;
+    border-radius: 9999px;
+}
+
+.ripple:active::after {
+    opacity: 1;
+    transition: opacity 0s;
+}
+
+/* Active nav item */
+.active {
+    background-color: #e0e7ff; /* bg-indigo-100 */
+    color: #3730a3; /* text-indigo-800 */
+    font-weight: 700; /* font-bold */
+}
+
+.fade-in {
+    animation: fadeInUp 0.5s ease-out both;
+  }
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+.tooltip {
+    position: relative;
+  }
+.tooltip:hover::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    top: -30px;
+    right: 0;
+    background: #4b5563;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    white-space: nowrap;
+    z-index: 10;
+    font-family: Vazir, sans-serif;
+  }
+
+:root {
+        --pdp-primary-color: #4f46e5; /* indigo-600 */
+        --pdp-hover-color: #4338ca; /* indigo-700 */
+        --pdp-border-color: #a5b4fc; /* indigo-300 */
+        --pdp-text-color: #374151; /* gray-700 */
+        --pdp-box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+    }
+
+/* Responsive Table Component (Mobile-First Card View) */
+@media (max-width: 768px) {
+  .responsive-table {
+    display: block;
+    width: 100%;
+    border: none !important;
+    background: transparent !important;
+  }
+  
+  .responsive-table thead {
+    display: none; /* Hide header on mobile */
+  }
+  
+  .responsive-table tbody {
+    display: block;
+    width: 100%;
+  }
+  
+  .responsive-table tr {
+    display: block;
+    width: 100%;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    margin-bottom: 1rem;
+    padding: 1rem;
+    position: relative;
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .responsive-table tr:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
+  }
+  
+  .responsive-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border: none !important;
+    border-bottom: 1px solid #f1f5f9 !important;
+    padding: 0.75rem 0.5rem !important;
+    text-align: left;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    background: transparent !important;
+  }
+  
+  .responsive-table td:last-child {
+    border-bottom: none !important;
+  }
+  
+  /* Use data-label for headers on mobile */
+  .responsive-table td::before {
+    content: attr(data-label);
+    font-weight: 700;
+    color: #4f46e5; /* indigo-600 */
+    text-align: right;
+    padding-left: 1rem;
+    white-space: nowrap;
+    font-size: 0.875rem;
+  }
+
+  /* Make checkbox row cleaner on mobile */
+  .responsive-table td.checkbox-cell {
+    justify-content: flex-end;
+    border-bottom: 1px dashed #e2e8f0 !important;
+    padding-bottom: 0.75rem !important;
+  }
+  .responsive-table td.checkbox-cell::before {
+    content: "انتخاب";
+    margin-left: auto;
+  }
+}
+
+
