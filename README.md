@@ -2,7 +2,6 @@
 
 [![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue.svg)](https://www.python.org/)
 [![Django](https://img.shields.io/badge/django-5.2-green.svg)](https://www.djangoproject.com/)
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 Mahi is a checkpoint-driven, localized event management system designed for participant check-ins, custom path configuration, and dynamic data collection. 
 
@@ -106,9 +105,3 @@ Operators can access the application by navigating to `http://<YOUR_IP>:8000` fr
 - **Analytics Dashboard:** Graphical reports and checkpoint throughput metrics.
 - **SMS Gateway Integration:** Dispatch real-time SMS notifications to participants upon checking in at designated checkpoints.
 - **Automatic Local Discovery:** Zero-configuration network announcement to simplify device connections on local networks.
-
----
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
