@@ -121,4 +121,6 @@ class CheckInSettingsForm(forms.ModelForm):
             'ci_auto_submit',
             'ci_auto_submit_delay',
             'ci_auto_submit_char_num',
+            'enable_barcode_scanner',
+            'enable_audio_feedback',
         ]
