@@ -20,7 +20,6 @@ function unlockAudioContext() {
         audioCtx.resume().then(() => {
             document.removeEventListener('click', unlockAudioContext);
             document.removeEventListener('touchstart', unlockAudioContext);
-            console.log("AudioContext unlocked successfully.");
         });
     } else if (audioCtx) {
         document.removeEventListener('click', unlockAudioContext);
@@ -115,9 +114,7 @@ document.addEventListener('alpine:init', () => {
             isScanningActive = false;
             this.isTorchOn = false;
             if (html5QrCode && html5QrCode.isScanning) {
-                html5QrCode.stop().then(() => {
-                    console.log("Scanner stream stopped.");
-                }).catch(err => {
+                html5QrCode.stop().catch(err => {
                     console.error("Failed to stop scanner tracks:", err);
                 });
             }

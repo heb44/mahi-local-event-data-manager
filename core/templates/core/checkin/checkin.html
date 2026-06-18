@@ -342,10 +342,9 @@
 
 {% block extra_scripts %}
 {% if request.user.settings.enable_barcode_scanner %}
-<!-- Barcode Scanner Modal Component (Alpine.js) -->
 <div x-data="scannerComponent()" 
      id="barcode-scanner-modal" 
-     class="fixed inset-0 z-50 hidden flex-col items-center justify-center bg-slate-900/90 backdrop-blur-sm p-4"
+     class="fixed inset-0 z-50 flex-col items-center justify-center bg-slate-900/90 backdrop-blur-sm p-4"
      x-show="isOpen"
      x-cloak
      x-transition:enter="transition ease-out duration-300"
