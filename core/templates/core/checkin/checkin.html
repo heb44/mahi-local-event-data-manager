@@ -220,7 +220,7 @@
                             <button
                                 type="button"
                                 class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-indigo-600 focus:outline-none p-1 flex items-center justify-center transition-colors"
-                                @click="$dispatch('open-scanner', { targetTabId: 'tab-{{cp.id}}' })"
+                                onclick="window.dispatchEvent(new CustomEvent('open-scanner', { detail: { targetTabId: 'tab-{{cp.id}}' } }))"
                                 title="اسکن بارکد"
                             >
                                 <span class="material-icons text-xl">qr_code_scanner</span>
@@ -260,20 +260,20 @@
         <th class="text-sm font-semibold border-b border-l border-indigo-200 w-12 py-3 px-2 text-center">
           <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
         </th>
-        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-14 py-3 px-2 text-center whitespace-nowrap">ردیف</th>
-        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-16 py-3 px-2 text-center whitespace-nowrap">شناسه</th>
-        <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap">نام</th>
-        <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap">نام خانوادگی</th>
-        <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap">تاریخ تولد</th>
-        <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap">شماره تلفن</th>
-        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-64 py-3 px-2 text-center whitespace-nowrap">متادیتا (شخص)</th>
-        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-64 py-3 px-2 text-center whitespace-nowrap">متادیتا (رویداد)</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap" data-label="چک‌این">چک‌این</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-14 py-3 px-2 text-center whitespace-nowrap" data-label="ردیف">ردیف</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-16 py-3 px-2 text-center whitespace-nowrap" data-label="شناسه">شناسه</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap" data-label="نام">نام</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap" data-label="نام خانوادگی">نام خانوادگی</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap" data-label="تاریخ تولد">تاریخ تولد</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap" data-label="شماره تلفن">شماره تلفن</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-64 py-3 px-2 text-center whitespace-nowrap" data-label="متادیتا (شخص)">متادیتا (شخص)</th>
+        <th class="text-sm font-semibold border-b border-x border-indigo-200 w-64 py-3 px-2 text-center whitespace-nowrap" data-label="متادیتا (رویداد)">متادیتا (رویداد)</th>
         {% for col in extra_columns %}
           {% if col.can_view %}
-            <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap">{{col.column_name}}</th>
+            <th class="text-sm font-semibold border-b border-x border-indigo-200 py-3 px-2 text-center whitespace-nowrap" data-label="{{col.column_name}}">{{col.column_name}}</th>
           {% endif %}
         {% endfor %}
-        <th class="text-sm font-semibold border-b border-r border-indigo-200 py-3 px-2 text-center whitespace-nowrap">عملیات</th>
       </tr>
     </thead>
     <tbody class="divide-y divide-gray-100">
@@ -281,6 +281,13 @@
       <tr class="{% cycle 'bg-gray-100' 'bg-white' %} hover:bg-indigo-50 transition">
         <td class="text-sm p-2 border-r border-b border-gray-200 text-center bg-indigo-100/50 checkbox-cell">
           <input type="checkbox" name="selected_persons" value="{{ person.id }}" class="person-checkbox">
+        </td>
+        <td class="text-sm p-2 border-x border-gray-200 text-center" data-label="چک‌این">
+          <div class="flex gap-3 justify-center items-center">
+            <button onclick="checkinPerson('{{ person.id }}')" class="text-indigo-600 hover:text-indigo-800" title="چک‌این">
+              <span class="material-icons text-lg">approval</span>
+            </button>
+          </div>
         </td>
         <td class="text-sm text-gray-700 p-2 border-x border-gray-200 text-center" data-label="ردیف">{{ forloop.counter }}</td>
         <td class="text-sm text-gray-700 p-2 border-x border-gray-200 w-[75px] text-center" data-label="شناسه">{{ person.id|default:"-" }}</td>
@@ -319,13 +326,6 @@
             {% endwith %}
           {% endif %}
         {% endfor %}
-        <td class="text-sm p-2 border-l border-gray-200 text-center" data-label="عملیات">
-          <div class="flex gap-3 justify-center items-center">
-            <button onclick="checkinPerson('{{ person.id }}')" class="text-indigo-600 hover:text-indigo-800" title="چک‌این">
-              <span class="material-icons text-lg">approval</span>
-            </button>
-          </div>
-        </td>
       </tr>
       {% empty %}
       <tr class="bg-white">
@@ -344,7 +344,7 @@
 {% if request.user.settings.enable_barcode_scanner %}
 <div x-data="scannerComponent()" 
      id="barcode-scanner-modal" 
-     class="fixed inset-0 z-50 flex-col items-center justify-center bg-slate-900/90 backdrop-blur-sm p-4"
+     class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/80 backdrop-blur-sm p-4"
      x-show="isOpen"
      x-cloak
      x-transition:enter="transition ease-out duration-300"
@@ -356,7 +356,7 @@
      @open-scanner.window="open($event.detail.targetTabId)"
      @close-scanner.window="close()"
 >
-    <div class="relative w-full max-w-md bg-white rounded-2xl overflow-hidden shadow-2xl border border-slate-200/50 flex flex-col p-6"
+    <div class="relative w-full max-w-lg bg-white rounded-2xl overflow-hidden shadow-2xl border border-slate-200/50 flex flex-col p-6"
          @click.away="close()">
         
         <!-- Header -->
@@ -371,13 +371,21 @@
         </div>
 
         <!-- Viewfinder -->
-        <div class="relative aspect-square w-full max-w-[280px] sm:max-w-[320px] mx-auto bg-black rounded-xl overflow-hidden shadow-inner border border-slate-700">
+        <div class="relative aspect-square md:aspect-video w-full bg-black rounded-xl overflow-hidden shadow-inner border border-slate-700">
             <div id="scanner-video-container" class="w-full h-full"></div>
-            <div class="scanner-laser absolute left-4 right-4 h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] z-10 pointer-events-none"></div>
-            <div class="absolute top-4 right-4 w-6 h-6 border-t-4 border-r-4 border-indigo-500 rounded-tr-md"></div>
-            <div class="absolute top-4 left-4 w-6 h-6 border-t-4 border-l-4 border-indigo-500 rounded-tl-md"></div>
-            <div class="absolute bottom-4 right-4 w-6 h-6 border-b-4 border-r-4 border-indigo-500 rounded-br-md"></div>
-            <div class="absolute bottom-4 left-4 w-6 h-6 border-b-4 border-l-4 border-indigo-500 rounded-tl-md"></div>
+            
+            <!-- Scanning Target Overlay (Purple Frame) -->
+            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div class="relative w-4/5 h-4/5 max-w-[280px] max-h-[280px] border border-indigo-500/20 rounded-2xl flex items-center justify-center bg-slate-900/10">
+                    <!-- Laser line -->
+                    <div class="scanner-laser absolute left-4 right-4 h-0.5 bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)] z-10 pointer-events-none"></div>
+                    <!-- Thick premium corners -->
+                    <div class="absolute -top-1 -right-1 w-6 h-6 border-t-4 border-r-4 border-indigo-600 rounded-tr-lg"></div>
+                    <div class="absolute -top-1 -left-1 w-6 h-6 border-t-4 border-l-4 border-indigo-600 rounded-tl-lg"></div>
+                    <div class="absolute -bottom-1 -right-1 w-6 h-6 border-b-4 border-r-4 border-indigo-600 rounded-br-lg"></div>
+                    <div class="absolute -bottom-1 -left-1 w-6 h-6 border-b-4 border-l-4 border-indigo-600 rounded-bl-lg"></div>
+                </div>
+            </div>
         </div>
 
         <!-- Instructions -->

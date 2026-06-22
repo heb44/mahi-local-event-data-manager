@@ -66,6 +66,11 @@ document.addEventListener('alpine:init', () => {
             // Check global nav query trigger (?scan=true)
             const urlParams = new URLSearchParams(window.location.search);
             if (urlParams.get('scan') === 'true') {
+                urlParams.delete('scan');
+                const searchStr = urlParams.toString();
+                const newUrl = window.location.pathname + (searchStr ? '?' + searchStr : '');
+                window.history.replaceState({}, document.title, newUrl);
+
                 setTimeout(() => {
                     const activeTabButton = document.querySelector('.tab-button.active');
                     if (activeTabButton) {
@@ -83,16 +88,20 @@ document.addEventListener('alpine:init', () => {
             isScanningActive = true;
 
             if (!html5QrCode) {
+                // Initialize with no format restrictions to support all QR and Barcodes out-of-the-box
                 html5QrCode = new Html5Qrcode("scanner-video-container");
             }
 
             const config = {
-                fps: 15,
-                qrbox: (width, height) => {
-                    const size = Math.min(width, height) * 0.7;
-                    return { width: size, height: size };
-                },
-                aspectRatio: 1.0
+                fps: 25, // Higher fps for snappier real-time frame capture
+                // Omit qrbox to scan the full canvas frame (improves decode rates, removes library white box conflict)
+                videoConstraints: {
+                    facingMode: this.currentFacingMode,
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 },
+                    focusMode: "continuous",
+                    advanced: [{ focusMode: "continuous" }]
+                }
             };
 
             html5QrCode.start(
@@ -103,6 +112,16 @@ document.addEventListener('alpine:init', () => {
             ).then(() => {
                 this.statusMessage = '';
                 this.checkTorchAvailability();
+
+                // Apply focusMode after initialization just in case (essential for Android Chrome)
+                setTimeout(() => {
+                    if (html5QrCode && html5QrCode.isScanning) {
+                        html5QrCode.applyVideoConstraints({
+                            focusMode: "continuous",
+                            advanced: [{ focusMode: "continuous" }]
+                        }).catch(e => { /* Autofocus not supported on device */ });
+                    }
+                }, 1000);
             }).catch(err => {
                 console.error("Camera access error:", err);
                 this.statusMessage = 'خطا در اتصال به دوربین. لطفاً مجوز دسترسی را بررسی نمایید.';
