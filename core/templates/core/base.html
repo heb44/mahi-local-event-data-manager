@@ -329,6 +329,42 @@
             if (sidebarBackdrop) {
                 sidebarBackdrop.addEventListener('click', toggleSidebar);
             }
+
+            // Convert native titles to custom tooltips
+            document.querySelectorAll('[title]').forEach(el => {
+                if (el.classList.contains('truncate')) return;
+                const titleText = el.getAttribute('title');
+                if (titleText && titleText.trim() !== '') {
+                    el.setAttribute('data-tooltip', titleText);
+                    el.removeAttribute('title');
+                    el.classList.add('tooltip');
+                }
+            });
+
+            // Tap-to-toggle tooltip handler
+            document.addEventListener('click', (e) => {
+                const tooltipEl = e.target.closest('.tooltip');
+                document.querySelectorAll('.tooltip.active-tooltip').forEach(el => {
+                    if (el !== tooltipEl) {
+                        el.classList.remove('active-tooltip');
+                    }
+                });
+                if (tooltipEl) {
+                    tooltipEl.classList.toggle('active-tooltip');
+                }
+            });
+
+            // Tap to horizontally scroll truncated elements
+            document.addEventListener('click', (e) => {
+                const truncateEl = e.target.closest('.truncate');
+                if (truncateEl) {
+                    truncateEl.classList.toggle('scroll-expanded');
+                } else {
+                    document.querySelectorAll('.truncate.scroll-expanded').forEach(el => {
+                        el.classList.remove('scroll-expanded');
+                    });
+                }
+            });
         });
 
     {% if use_persian_digits %}

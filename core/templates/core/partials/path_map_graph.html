@@ -1,0 +1,144 @@
+<section class="active-path-section mb-6">
+    <div class="flex flex-col gap-2 mb-4 w-full">
+        <!-- Top Row: Title & Toggle Switch -->
+        <div class="flex justify-between items-center w-full gap-4 min-w-0">
+            <div class="flex items-center gap-2 min-w-0 flex-1">
+                <h2 class="text-lg sm:text-xl font-bold text-indigo-700 truncate"
+                    title="نمودار مسیر {{ path.name }}">نمودار مسیر {{ path.name }}</h2>
+                {% if show_view_button %}
+                <a href="{% url 'events:path_detail' path.id %}" class="view-btn text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5 shrink-0 text-sm">
+                    <span class="material-icons" style="font-size: 0.9rem;">visibility</span> <span class="hidden sm:inline">مشاهده</span>
+                </a>
+                {% endif %}
+            </div>
+            <div class="switch-container flex items-center gap-2 shrink-0">
+                <span class="text-sm text-gray-700">نقشه</span>
+                <label class="switch">
+                    <input type="checkbox" id="viewSwitch-{{ path.id }}" />
+                    <span class="slider"></span>
+                </label>
+                <span class="text-sm text-gray-700">گراف</span>
+            </div>
+        </div>
+        <!-- Bottom Row: Badges -->
+        <div class="flex flex-wrap items-center gap-2">
+            {% if path.allow_duplicate_checkin %}
+            <div
+                class="flex items-center gap-1 text-xs bg-orange-100/10 text-orange-700 px-2.5 py-1 rounded-lg border border-orange-400/80 shrink-0">
+                چک‌این تکراری: مجاز</div>
+            {% else %}
+            <div
+                class="flex items-center gap-1 text-xs bg-yellow-100/10 text-yellow-700 px-2.5 py-1 rounded-lg border border-yellow-400/80 shrink-0">
+                چک‌این تکراری: غیر مجاز</div>
+            {% endif %}
+            {% if path.enforce_checkpoint_order %}
+            <div
+                class="flex items-center gap-1 text-xs bg-emerald-100/10 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-400/80 shrink-0">
+                رعایت ترتیب</div>
+            {% else %}
+            <div
+                class="flex items-center gap-1 text-xs bg-red-100/10 text-red-700 px-2.5 py-1 rounded-lg border border-red-400/80 shrink-0">
+                عدم رعایت ترتیب</div>
+            {% endif %}
+        </div>
+    </div>
+    <div id="graphView-{{ path.id }}" class="path-container">
+        {% if checkpoints_grouped %}
+            {% for group in checkpoints_grouped %}
+                {% for check_point in group %}
+                <div class="checkpoint flex flex-col items-center">
+                    <div class="checkpoint-circle flex items-center justify-center text-white text-sm font-bold" style="background-color:{{check_point.color}}">
+                        {{ check_point.order }}
+                    </div>
+                    <span class="checkpoint-label" title="{{check_point.name}}">{{check_point.name}}</span>
+                </div>
+                {% endfor %}
+                {% if not forloop.last %}
+                <div class="connector"></div>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+    </div>
+    <div id="mapView-{{ path.id }}" class="hidden rounded-xl border border-gray-300" style="height: 400px; width: 100%;"></div>
+</section>
+
+<script>
+    (function() {
+        const pathId = "{{ path.id }}";
+        const mapPoints = [
+            {% for group in checkpoints_grouped %}
+                {% for cp in group %}
+                    {% if cp.latitude and cp.longitude %}
+                    { lat: {{ cp.latitude|stringformat:"f" }}, lng: {{ cp.longitude|stringformat:"f" }}, color: "{{ cp.color|default:'#4f46e5' }}", name: "{{ cp.name }}", order: {{ cp.order }} },
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+        ];
+        let routeMap = null;
+
+        function initMap() {
+            if (routeMap) return;
+            const containerId = `mapView-${pathId}`;
+            const mapContainer = document.getElementById(containerId);
+            if (!mapContainer) return;
+
+            routeMap = L.map(containerId).setView([35.6892, 51.3890], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }).addTo(routeMap);
+
+            // Sort points by order to ensure polylines trace sequentially
+            const sortedPoints = [...mapPoints].sort((a, b) => a.order - b.order);
+
+            const latLngs = [];
+            sortedPoints.forEach(point => {
+                const latLng = [point.lat, point.lng];
+                latLngs.push(latLng);
+
+                // Use custom marker showing sequence order number
+                const circleHtml = `<div style="background-color: ${point.color}; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: white; font-family: Vazir, sans-serif; font-size: 11px; font-weight: bold;">${point.order}</div>`;
+                const customIcon = L.divIcon({
+                    html: circleHtml,
+                    className: 'custom-marker',
+                    iconSize: [22, 22],
+                    iconAnchor: [11, 11],
+                    popupAnchor: [0, -11]
+                });
+
+                L.marker(latLng, { icon: customIcon })
+                    .addTo(routeMap)
+                    .bindPopup(point.name);
+            });
+
+            if (latLngs.length > 1) {
+                L.polyline(latLngs, {
+                    color: '#4f46e5',
+                    weight: 3,
+                    dashArray: '5, 5'
+                }).addTo(routeMap);
+            }
+
+            if (latLngs.length > 0) {
+                routeMap.fitBounds(latLngs, { padding: [20, 20] });
+            }
+        }
+
+        document.getElementById(`viewSwitch-${pathId}`).addEventListener('change', function() {
+            const graphView = document.getElementById(`graphView-${pathId}`);
+            const mapView = document.getElementById(`mapView-${pathId}`);
+            if (this.checked) {
+                graphView.classList.add('hidden');
+                mapView.classList.remove('hidden');
+                initMap();
+                setTimeout(() => {
+                    if (routeMap) {
+                        routeMap.invalidateSize();
+                    }
+                }, 100);
+            } else {
+                graphView.classList.remove('hidden');
+                mapView.classList.add('hidden');
+            }
+        });
+    })();
+</script>

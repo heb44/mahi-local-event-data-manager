@@ -31,6 +31,7 @@ urlpatterns = [
     path('checkpoints/delete/<int:cp_id>/', views.checkpoint_delete, name='checkpoint_delete'),
     path('checkpoints/edit/<int:cp_id>/', views.checkpoint_edit, name='checkpoint_edit'),
     path('checkpoints/toggle/', views.toggle_checkpoint_status, name='checkpoint_toggle_status'),
+    path('checkpoints/<int:cp_id>/', views.checkpoint_detail, name='checkpoint_detail'),
 
     path('<int:event_id>/parts/', views.participants_list, name='participants'),
     path('<int:event_id>/parts/add/', views.participant_add, name='participant_add'),

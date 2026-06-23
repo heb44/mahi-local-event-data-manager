@@ -164,7 +164,6 @@ class CheckpointForm(forms.ModelForm):
             'order',
             'location_description',
             'is_mandatory',
-            'is_active',
             'allow_duplicate_checkin',
             'latitude',
             'longitude',

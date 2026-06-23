@@ -40,15 +40,30 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         'active_event': Event.objects.filter(is_active=True).count() or 2,
     }
 
-    active_paths = Path.objects.filter(is_active=True).prefetch_related(
-        Prefetch('checkpoints', queryset=Checkpoint.objects.filter(is_active=True).order_by('order'))
-    ).annotate(checkpoint_count=Count('checkpoints'))
+    if active_event:
+        active_paths = Path.objects.filter(
+            event=active_event,
+            is_active=True
+        ).prefetch_related(
+            Prefetch('checkpoints', queryset=Checkpoint.objects.filter(is_active=True).order_by('order'))
+        ).annotate(checkpoint_count=Count('checkpoints'))
+    else:
+        active_paths = Path.objects.none()
 
-    map_points = [
-        {'lat': 35.6892, 'lng': 51.3890, 'popup': 'User 1'},
-        {'lat': 35.7000, 'lng': 51.4000, 'popup': 'User 2'},
-        {'lat': 35.6800, 'lng': 51.4100, 'popup': 'User 3'},
-    ]
+    map_paths = []
+    for path in active_paths:
+        path_data = {'name': path.name, 'points': []}
+        for cp in path.checkpoints.all():
+            if cp.latitude and cp.longitude:
+                path_data['points'].append({
+                    'lat': float(cp.latitude),
+                    'lng': float(cp.longitude),
+                    'popup': f'{cp.name} ({path.name})',
+                    'color': cp.color or '#4F46E5',
+                    'order': cp.order
+                })
+        if path_data['points']:
+            map_paths.append(path_data)
 
     context = {
         'active_page': 'dashboard',
@@ -56,7 +71,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         'latest_events_text': latest_events_text,
         'stats': stats,
         'active_paths': active_paths,
-        'map_points': map_points,
+        'map_paths': map_paths,
     }
     return render(request, 'core/dashboard.html', context)
 

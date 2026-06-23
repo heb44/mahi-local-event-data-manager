@@ -27,29 +27,29 @@
         <span class="material-icons text-base">delete</span>
       </button>
     </div>
-    <div class="flex items-center gap-1 text-sm text-gray-600">
-      <span class="material-icons text-base">calendar_today</span>
+    <div class="flex items-center gap-2 text-sm text-gray-600">
+      <span class="material-icons icon-standard">calendar_today</span>
       <strong>تاریخ ایجاد:</strong> <span>{{ event.created_at|to_jalali }}</span>
     </div>
     <div class="text-sm text-gray-700 space-y-1">
-      <div class="flex items-center gap-1">
-        <span class="material-icons text-base">alt_route</span>
+      <div class="flex items-center gap-2">
+        <span class="material-icons icon-standard">map</span>
         <strong>تعداد مسیرها:</strong> <span>{{event.path_count}}</span>
       </div>
-      <div class="flex items-center gap-1">
-        <span class="material-icons text-base">people</span>
+      <div class="flex items-center gap-2">
+        <span class="material-icons icon-standard">people</span>
         <strong>تعداد اشخاص:</strong> <span>{{event.participant_count}}</span>
       </div>
     </div>
     <div class="flex items-center gap-2 self-end mt-2">
-      <a href="{% url 'events:participants' event.id %}" class="flex items-center justify-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium" title="شرکت‌کنندگان">
-        <span class="material-icons text-base">group</span>
+      <a href="{% url 'events:participants' event.id %}" class="flex items-center justify-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium" title="شرکت‌کنندگان">
+        <span class="material-icons icon-standard">group</span>
       </a>
-      <a href="{% url 'events:schema' event.id %}" class="flex items-center justify-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium" title="داده‌ساختار">
-        <span class="material-icons text-base">table_chart</span>
+      <a href="{% url 'events:schema' event.id %}" class="flex items-center justify-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium" title="داده‌ساختار">
+        <span class="material-icons icon-standard">table_chart</span>
       </a>
-      <a class="flex items-center justify-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium" href={% url 'events:detail' event.id %}>
-        <span class="material-icons text-base">visibility</span>
+      <a class="flex items-center justify-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium" href={% url 'events:detail' event.id %}>
+        <span class="material-icons icon-standard">visibility</span>
         <span class="hidden sm:inline">مشاهده</span>
       </a>
     </div>
@@ -65,29 +65,29 @@
         <span class="material-icons text-base">delete</span>
       </button>
     </div>
-    <div class="flex items-center gap-1 text-sm text-gray-500">
-      <span class="material-icons text-base">calendar_today</span>
+    <div class="flex items-center gap-2 text-sm text-gray-500">
+      <span class="material-icons icon-standard">calendar_today</span>
       <strong>تاریخ ایجاد:</strong> <span>{{ event.created_at|to_jalali }}</span>
     </div>
     <div class="text-sm text-gray-600 space-y-1">
-      <div class="flex items-center gap-1">
-        <span class="material-icons text-base">alt_route</span>
+      <div class="flex items-center gap-2">
+        <span class="material-icons icon-standard">map</span>
         <strong>تعداد مسیرها:</strong> <span>{{event.path_count}}</span>
       </div>
-      <div class="flex items-center gap-1">
-        <span class="material-icons text-base">people</span>
+      <div class="flex items-center gap-2">
+        <span class="material-icons icon-standard">people</span>
         <strong>تعداد اشخاص:</strong> <span>{{event.participant_count}}</span>
       </div>
     </div>
     <div class="flex items-center gap-2 self-end mt-2">
-      <a href="{% url 'events:participants' event.id %}" class="flex items-center justify-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium" title="شرکت‌کنندگان">
-        <span class="material-icons text-base">group</span>
+      <a href="{% url 'events:participants' event.id %}" class="flex items-center justify-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium" title="شرکت‌کنندگان">
+        <span class="material-icons icon-standard">group</span>
       </a>
-      <a href="{% url 'events:schema' event.id %}" class="flex items-center justify-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium" title="داده‌ساختار">
-        <span class="material-icons text-base">table_chart</span>
+      <a href="{% url 'events:schema' event.id %}" class="flex items-center justify-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium" title="داده‌ساختار">
+        <span class="material-icons icon-standard">table_chart</span>
       </a>
-      <a class="flex items-center justify-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium"  href={% url 'events:detail' event.id %}>
-        <span class="material-icons text-base">visibility</span>
+      <a class="flex items-center justify-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium"  href={% url 'events:detail' event.id %}>
+        <span class="material-icons icon-standard">visibility</span>
         <span class="hidden sm:inline">مشاهده</span>
       </a>
     </div>

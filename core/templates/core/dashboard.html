@@ -274,30 +274,49 @@
         attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
       }).addTo(map);
 
-      // Custom Indigo Circle Marker
-      const indigoCircle = L.divIcon({
-        className: 'custom-marker',
-        iconSize: [14, 14],
-        iconAnchor: [7, 7],
-        popupAnchor: [0, -7]
+      const mapPaths = {{ map_paths|safe }};
+      const allLatLangs = [];
+      const colors = ['#4F46E5', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+
+      mapPaths.forEach((path, index) => {
+        const pathPoints = [];
+        const pathColor = colors[index % colors.length];
+
+        // Sort checkpoints by order to draw the connecting polyline in sequence
+        const sortedPoints = [...path.points].sort((a, b) => (a.order || 0) - (b.order || 0));
+
+        sortedPoints.forEach(point => {
+          const latLng = [point.lat, point.lng];
+          pathPoints.push(latLng);
+          allLatLangs.push(latLng);
+
+          // Use custom marker showing sequence order number
+          const circleHtml = `<div style="background-color: ${point.color}; width: 22px; height: 22px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; color: white; font-family: Vazir, sans-serif; font-size: 11px; font-weight: bold;">${point.order || ''}</div>`;
+          const customIcon = L.divIcon({
+            html: circleHtml,
+            className: 'custom-marker',
+            iconSize: [22, 22],
+            iconAnchor: [11, 11],
+            popupAnchor: [0, -11]
+          });
+
+          L.marker(latLng, { icon: customIcon })
+            .addTo(map)
+            .bindPopup(point.popup);
+        });
+
+        if (pathPoints.length > 1) {
+          L.polyline(pathPoints, {
+            color: pathColor,
+            weight: 3,
+            dashArray: '5, 5'
+          }).addTo(map);
+        }
       });
 
-      // Add markers with popups
-      const points = {{ map_points|safe }};
-      points.forEach(point => {
-        L.marker([point.lat, point.lng], { icon: indigoCircle })
-          .addTo(map)
-          .bindPopup(point.popup);
-      });
-
-      // Add polygon with Indigo theme
-      L.polygon(points.map(p => [p.lat, p.lng]), { 
-        color: '#4F46E5',
-        fillColor: '#818CF8',
-        fillOpacity: 0.5,
-        weight: 3,
-        dashArray: '5, 5'
-      }).addTo(map);
+      if (allLatLangs.length > 0) {
+        map.fitBounds(allLatLangs, { padding: [20, 20] });
+      }
       
       // Fixes potential map rendering issues when its container was hidden
       setTimeout(() => map.invalidateSize(), 100);

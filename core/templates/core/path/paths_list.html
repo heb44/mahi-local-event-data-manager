@@ -69,7 +69,10 @@
   {% for group in paths_grouped %}
   <!-- Active Route Card -->
   <div class="fade-in overflow-visible w-full flex flex-col gap-1 border border-gray-300 rounded-xl bg-gray-50 p-5 mb-4">
-    <a  class="flex text-base text-gray-600 font-semibold">رویداد {{group.0.event.name}}</a>
+    <a class="flex items-center gap-2 text-base text-gray-600 font-semibold">
+      <span class="material-icons icon-standard text-gray-500">event</span>
+      رویداد {{group.0.event.name}}
+    </a>
     <div class="mt-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 overflow-visible w-full">
       {% for path in group %}
       <div class="fade-in overflow-visible relative bg-{% if path.is_active %}indigo-50 border-indigo-300{% else %}white border-gray-200{% endif %} w-full p-4 rounded-xl shadow-md flex flex-col gap-3 border h-fit">
@@ -86,18 +89,18 @@
             </button>
           </div>
         </div>
-        <div class="flex items-center gap-1 text-sm text-gray-600">
-          <span class="material-icons text-base">calendar_today</span>
+        <div class="flex items-center gap-2 text-sm text-gray-600">
+          <span class="material-icons icon-standard">calendar_today</span>
           <strong>تاریخ ایجاد:</strong> <span>{{path.created_at|to_jalali}}</span>
         </div>
         <div class="text-sm text-gray-700 space-y-1">
-          <div class="flex items-center gap-1">
-            <span class="material-icons text-base">place</span>
+          <div class="flex items-center gap-2">
+            <span class="material-icons icon-standard">place</span>
             <strong>چک‌پوینت‌ها:</strong> <span>{{path.cp_count}}</span>
           </div>
         </div>
-        <a href="{% url 'events:path_detail' path.id %}" class="flex items-center justify-center gap-1 text-indigo-600 hover:text-indigo-800 text-sm font-medium self-end mt-2">
-          <span class="material-icons text-base">visibility</span>
+        <a href="{% url 'events:path_detail' path.id %}" class="flex items-center justify-center gap-2 text-indigo-600 hover:text-indigo-800 text-sm font-medium self-end mt-2">
+          <span class="material-icons icon-standard">visibility</span>
           <span class="hidden sm:inline">مشاهده</span>
         </a>
       </div>

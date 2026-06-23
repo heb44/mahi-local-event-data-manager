@@ -7,6 +7,8 @@
 <meta name="csrf-token" content="{{ csrf_token }}">
 {% comment %} <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" /> {% endcomment %}
 {% comment %} <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script> {% endcomment %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'core/css/leaflet.css' %}" />
 <style>
     .modal {
         position: fixed;
@@ -47,7 +49,7 @@
       .path-container {
         display: flex;
         align-items: center;
-        padding: 1.5rem 3.5rem 3.5rem 3.5rem;
+        padding: 1.5rem 1rem 3.5rem 1rem;
         position: relative;
         overflow-x: auto;
         -webkit-overflow-scrolling: touch;
@@ -101,11 +103,15 @@
         transform: translateX(-50%);
         font-size: 0.875rem;
         color: #374151;
-        white-space: nowrap;
+        white-space: normal;
         text-align: center;
-        max-width: 18ch;
+        width: 5.5rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
         overflow: hidden;
         text-overflow: ellipsis;
+        line-height: 1.2;
       }
       .checkpoint-tooltip {
         position: absolute;
@@ -131,8 +137,8 @@
         visibility: visible;
       }
       .connector {
-        flex: 1;
-        min-w-[2.5rem];
+        width: 2rem;
+        min-width: 2rem;
         height: 2px;
         background-color: #d1d5db;
         flex-shrink: 0;
@@ -383,56 +389,7 @@
 
 {% if event.is_active %}
     {% for path_data in active_paths %}
-        <section class="active-path-section mb-6">
-            <div class="flex flex-col gap-2 mb-4 w-full">
-                <!-- Top Row: Title & Toggle Switch -->
-                <div class="flex justify-between items-center w-full gap-4 min-w-0">
-                    <div class="flex items-center gap-2 min-w-0 flex-1">
-                        <h2 class="text-lg sm:text-xl font-bold text-indigo-700 truncate" title="نمودار مسیر {{path_data.path.name}}">نمودار مسیر {{path_data.path.name}}</h2>
-                        <a href="{% url 'events:path_detail' path_data.path.id %}" class="view-btn text-indigo-600 hover:text-indigo-800 flex items-center gap-0.5 shrink-0 text-sm">
-                            <span class="material-icons" style="font-size: 0.9rem;">visibility</span> <span class="hidden sm:inline">مشاهده</span>
-                        </a>
-                    </div>
-                    <div class="switch-container flex items-center gap-2 shrink-0">
-                        <span class="text-sm text-gray-700">گراف</span>
-                        <label class="switch">
-                            <input type="checkbox" id="viewSwitch" />
-                            <span class="slider"></span>
-                        </label>
-                        <span class="text-sm text-gray-700">نقشه</span>
-                    </div>
-                </div>
-                <!-- Bottom Row: Badges -->
-                <div class="flex flex-wrap items-center gap-2">
-                    {% if path_data.path.allow_duplicate_checkin %}
-                        <div class="flex items-center gap-1 text-xs bg-orange-100/10 text-orange-700 px-2.5 py-1 rounded-lg border border-orange-400/80 shrink-0">چک‌این تکراری: مجاز</div>
-                    {% else %}
-                        <div class="flex items-center gap-1 text-xs bg-yellow-100/10 text-yellow-700 px-2.5 py-1 rounded-lg border border-yellow-400/80 shrink-0">چک‌این تکراری: غیر مجاز</div>
-                    {% endif %}
-                    {% if path_data.path.enforce_checkpoint_order %}
-                        <div class="flex items-center gap-1 text-xs bg-emerald-100/10 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-400/80 shrink-0">رعایت ترتیب</div>
-                    {% else %}
-                        <div class="flex items-center gap-1 text-xs bg-red-100/10 text-red-700 px-2.5 py-1 rounded-lg border border-red-400/80 shrink-0">عدم رعایت ترتیب</div>
-                    {% endif %}
-                </div>
-            </div>
-            <div id="graphView" class="path-container">
-                {% if path_data.checkpoints %}
-                    {% for group in path_data.checkpoints %}
-                        {% for check_point in group %}
-                            <div class="checkpoint">
-                                <div class="checkpoint-circle" style="background-color:{{check_point.color}}"></div>
-                                <span class="checkpoint-label" title="{{check_point.name}}">{{check_point.name}}</span>
-                            </div>
-                        {% endfor %}
-                        {% if not forloop.last %}
-                            <div class="connector"></div>
-                        {% endif %}
-                    {% endfor %}
-                {% endif %}
-            </div>
-            <div id="mapView" class="hidden" style="height: 300px;"></div>
-        </section>
+        {% include 'core/partials/path_map_graph.html' with path=path_data.path checkpoints_grouped=path_data.checkpoints show_view_button=True %}
     {% endfor %}
 {% endif %}
 <section class="grid grid-cols-1 md:grid-cols-12 gap-6 mb-6">
@@ -446,11 +403,11 @@
                 <table class="w-full text-sm text-right min-w-[700px] md:min-w-0 md:table-fixed rounded-lg">
                     <thead class="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
                         <tr>
-                            <th scope="col" class="px-4 py-3 w-2/5 text-right">شخص</th>
-                            <th scope="col" class="px-4 py-3 w-1/5 text-right">چک‌پوینت</th>
+                            <th scope="col" class="px-4 py-3 w-1/3 text-right">شخص</th>
+                            <th scope="col" class="px-4 py-3 w-1/4 text-right">چک‌پوینت</th>
                             <th scope="col" class="px-4 py-3 w-1/5 text-right">کاربر</th>
-                            <th scope="col" class="px-4 py-3 text-center w-40">وضعیت و زمان</th>
-                            <th scope="col" class="px-2 py-3 text-center w-10"><span class="sr-only">Info</span></th>
+                            <th scope="col" class="px-4 py-3 text-center w-36">وضعیت و زمان</th>
+                            <th scope="col" class="px-2 py-3 text-center w-12"><span class="sr-only">Info</span></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -517,9 +474,9 @@
                 </div>
             {% endif %}
 
-            <div class="grid grid-cols-5 gap-x-4 items-center h-full border rounded-xl border-gray-100 p-6">
+            <div class="grid grid-cols-1 sm:grid-cols-5 gap-6 sm:gap-x-4 items-center h-full border rounded-xl border-gray-100 p-6">
 
-                <div class="col-span-2 flex flex-col items-center justify-center text-center pl-3">
+                <div class="col-span-1 sm:col-span-2 flex flex-col items-center justify-center text-center pl-3">
                     <div class="checkin-chart" style="--success-rate: {{approved_checkins_percentage}};">
                         <span class="checkin-total">{{total_checkins_count}}</span>
                     </div>
@@ -531,7 +488,7 @@
                     </div>
                 </div>
 
-                <div class="col-span-3 flex flex-col gap-y-4">
+                <div class="col-span-1 sm:col-span-3 flex flex-col gap-y-4">
                    <div class="stat-list-item">
                         <div class="stat-label">
                             <span class="material-icons text-indigo-500 text-xl">map</span>
@@ -699,47 +656,9 @@
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="{% static 'core/js/leaflet.js' %}"></script>
 <script>
-    // مدیریت سوئیچ گراف و نقشه
-    const viewSwitch = document.getElementById('viewSwitch');
-    const graphView = document.getElementById('graphView');
-    const mapView = document.getElementById('mapView');
-    let map = null;
-
-    if (viewSwitch) {
-        viewSwitch.addEventListener('change', () => {
-            if (viewSwitch.checked) {
-                graphView.classList.add('hidden');
-                mapView.classList.remove('hidden');
-                if (!map) {
-                    map = L.map(mapView).setView([35.6892, 51.3890], 13);
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                    }).addTo(map);
-                    const checkpoints = [
-                        { name: 'دروازه ۱', lat: 35.6892, lng: 51.3890, color: 'red' },
-                        { name: 'دروازه ۲', lat: 35.6910, lng: 51.3910, color: 'green' },
-                        { name: 'دروازه ۳', lat: 35.6870, lng: 51.3870, color: 'blue' }
-                    ];
-                    checkpoints.forEach(cp => {
-                        L.circleMarker([cp.lat, cp.lng], {
-                            radius: 10,
-                            color: cp.color,
-                            fillColor: cp.color,
-                            fillOpacity: 0.8
-                        }).addTo(map).bindPopup(`
-                            <strong>${cp.name}</strong><br>
-                            آخرین چک‌این: نمونه<br>
-                            زمان: ۱۴۰۳/۰۲/۰۱
-                        `);
-                    });
-                }
-            } else {
-                mapView.classList.add('hidden');
-                graphView.classList.remove('hidden');
-            }
-        });
-    }
+    // Map toggle and initialization are handled internally by the path_map_graph component
 
     // مدیریت باز و بسته کردن مدال
     function openModal(modalId) {

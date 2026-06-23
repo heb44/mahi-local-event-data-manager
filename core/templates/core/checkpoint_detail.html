@@ -1,0 +1,625 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% load jalali_filters %}
+
+{% block title %}جزئیات چک‌پوینت - {{ checkpoint.name }}{% endblock %}
+
+{% block extra_styles %}
+<meta name="csrf-token" content="{{ csrf_token }}">
+<link rel="stylesheet" href="{% static 'core/css/leaflet.css' %}" />
+<style>
+  .toggle {
+    position: relative;
+    display: inline-block;
+    width: 34px;
+    height: 20px;
+  }
+  .toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #d1d5db;
+    transition: .4s;
+    border-radius: 20px;
+  }
+  .slider:before {
+    position: absolute;
+    content: "";
+    height: 16px;
+    width: 16px;
+    left: 2px;
+    bottom: 2px;
+    background-color: white;
+    transition: .4s;
+    border-radius: 50%;
+  }
+  input:checked + .slider {
+    background-color: #4f46e5;
+  }
+  input:checked + .slider:before {
+    transform: translateX(14px);
+  }
+  #user-suggestions div {
+    transition: background-color 0.2s;
+  }
+  #user-suggestions div:hover {
+    background-color: #e5e7eb;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Back link and Header -->
+<header class="mb-6">
+  <div class="flex flex-col gap-2 w-full">
+    <!-- Top Row: Title & Action Buttons -->
+    <div class="flex justify-between items-center w-full gap-4 min-w-0">
+      <div class="flex items-center gap-2 min-w-0 flex-1">
+        <span class="w-4 h-4 rounded-full border border-gray-300 shadow-sm shrink-0" style="background-color: {{ checkpoint.color }}"></span>
+        <h1 class="text-lg sm:text-2xl font-bold text-indigo-700 truncate" title="جزئیات چک‌پوینت {{ checkpoint.name }}">
+          جزئیات چک‌پوینت {{ checkpoint.name }}</h1>
+        <div class="relative group shrink-0">
+          <span class="material-icons text-gray-400 hover:text-gray-500 cursor-pointer text-base align-middle"
+              title="{{ checkpoint.location_description|default:'بدون توضیح' }}">
+              info
+          </span>
+        </div>
+      </div>
+      <!-- دکمه‌های عملیات -->
+      <div class="flex gap-2 shrink-0">
+        <button
+          class="flex items-center gap-1 bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-2 rounded-lg text-sm"
+          onclick="openEditModal()">
+          <span class="material-icons text-base">edit</span> <span class="hidden sm:inline">ویرایش چک‌پوینت</span>
+        </button>
+        <button
+          class="flex items-center gap-1 bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-sm"
+          onclick="confirmDelete()">
+          <span class="material-icons text-base">delete</span> <span class="hidden sm:inline">حذف</span>
+        </button>
+      </div>
+    </div>
+    <!-- Bottom Row: Subtitle Info -->
+    <p class="text-sm text-gray-500 mt-1">
+      <a href="{% url 'events:checkpoints' %}" class="hover:underline text-indigo-600">لیست چک‌پوینت‌ها</a>
+      <span class="px-1 text-gray-600">/</span>
+      <a href="{% url 'events:path_detail' checkpoint.path.id %}" class="hover:underline text-indigo-600">مسیر مرتبط:
+        {{checkpoint.path.name}}</a>
+      <span class="px-1 text-gray-600">|</span> شناسه چک‌پوینت: {{ checkpoint.id }}
+      <span class="px-1 text-gray-600">|</span> اپراتور: {{checkpoint.user.username|default:"تعیین نشده"}}
+    </p>
+  </div>
+</header>
+
+<!-- Main Grid Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+  <!-- General Details Card -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col justify-between">
+    <div>
+      <h3 class="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3 mb-4 flex items-center gap-2">
+        <span class="material-icons text-indigo-600">info</span> اطلاعات عمومی
+      </h3>
+      
+      <div class="space-y-4 text-sm text-gray-700">
+        <div class="flex justify-between items-center py-2 border-b border-gray-50">
+          <span class="text-gray-500">مسیر مرتبط:</span>
+          <a href="{% url 'events:path_detail' checkpoint.path.id %}" class="text-indigo-600 hover:underline font-semibold flex items-center gap-1">
+            {{ checkpoint.path.name }} <span class="material-icons text-xs">launch</span>
+          </a>
+        </div>
+        <div class="flex justify-between items-center py-2 border-b border-gray-50">
+          <span class="text-gray-500">رویداد مرتبط:</span>
+          <a href="{% url 'events:detail' checkpoint.path.event.id %}" class="text-indigo-600 hover:underline font-semibold flex items-center gap-1">
+            {{ checkpoint.path.event.name }} <span class="material-icons text-xs">launch</span>
+          </a>
+        </div>
+        <div class="flex justify-between items-center py-2 border-b border-gray-50">
+          <span class="text-gray-500">کاربر مسئول (اپراتور):</span>
+          <span class="font-semibold text-gray-900">{{ checkpoint.user.username|default:"تعیین نشده" }}</span>
+        </div>
+        <div class="flex justify-between items-center py-2 border-b border-gray-50">
+          <span class="text-gray-500">ترتیب در مسیر:</span>
+          <span class="w-7 h-7 flex items-center justify-center rounded-full bg-indigo-100 text-indigo-800 text-xs font-bold">{{ checkpoint.order }}</span>
+        </div>
+        <div class="flex justify-between items-center py-2 border-b border-gray-50">
+          <span class="text-gray-500">محل وقوع:</span>
+          <span class="font-semibold text-gray-900">{{ checkpoint.location_description|default:"تعیین نشده" }}</span>
+        </div>
+        <div class="flex justify-between items-center py-2 border-b border-gray-50">
+          <span class="text-gray-500">مختصات جغرافیایی:</span>
+          <span class="font-semibold text-gray-900" dir="ltr">
+            {% if checkpoint.latitude and checkpoint.longitude %}
+              {{ checkpoint.latitude }}, {{ checkpoint.longitude }}
+            {% else %}
+              ثبت نشده
+            {% endif %}
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="mt-6 pt-4 border-t border-gray-100 flex flex-wrap justify-between items-center gap-4">
+      <div class="flex items-center gap-2">
+        <label class="toggle">
+          <input type="checkbox" id="checkpointStatusToggle" {% if checkpoint.is_active %}checked{% endif %} />
+          <span class="slider"></span>
+        </label>
+        <span class="text-sm font-semibold {% if checkpoint.is_active %}text-indigo-700{% else %}text-gray-500{% endif %}">
+          {% if checkpoint.is_active %}وضعیت: فعال{% else %}وضعیت: غیرفعال{% endif %}
+        </span>
+      </div>
+      
+      <div class="flex flex-wrap items-center gap-2">
+        {% if checkpoint.is_mandatory %}
+        <div class="flex items-center gap-1 text-xs bg-red-100/10 text-red-700 px-2.5 py-1 rounded-lg border border-red-400/80 shrink-0">
+          <span class="material-icons text-sm">priority_high</span> اجباری
+        </div>
+        {% else %}
+        <div class="flex items-center gap-1 text-xs bg-gray-100/10 text-gray-600 px-2.5 py-1 rounded-lg border border-gray-400/80 shrink-0">
+          اختیاری
+        </div>
+        {% endif %}
+
+        {% if checkpoint.allow_duplicate_checkin %}
+        <div class="flex items-center gap-1 text-xs bg-emerald-100/10 text-emerald-700 px-2.5 py-1 rounded-lg border border-emerald-400/80 shrink-0">
+          <span class="material-icons text-sm">repeat</span> چک‌این تکراری: مجاز
+        </div>
+        {% else %}
+        <div class="flex items-center gap-1 text-xs bg-yellow-100/10 text-yellow-700 px-2.5 py-1 rounded-lg border border-yellow-400/80 shrink-0">
+          <span class="material-icons text-sm">block</span> چک‌این تکراری: غیر مجاز
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Geographic Map Card -->
+  <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 lg:col-span-2 flex flex-col">
+    <h3 class="text-lg font-bold text-gray-800 pb-3 mb-4 flex items-center justify-between border-b border-gray-100">
+      <span class="flex items-center gap-2">
+        <span class="material-icons text-indigo-600">location_on</span> موقعیت مکانی چک‌پوینت
+      </span>
+      {% if checkpoint.latitude and checkpoint.longitude %}
+        <a href="https://maps.google.com/?q={{ checkpoint.latitude }},{{ checkpoint.longitude }}" target="_blank" class="text-sm text-indigo-600 hover:underline flex items-center gap-1">
+          مشاهده در گوگل مپس <span class="material-icons text-xs">open_in_new</span>
+        </a>
+      {% endif %}
+    </h3>
+    
+    <div class="flex-1 w-full min-h-[250px] relative rounded-xl border border-gray-200 overflow-hidden bg-gray-50 flex items-center justify-center">
+      {% if checkpoint.latitude and checkpoint.longitude %}
+        <div id="checkpointMap" class="w-full h-full absolute inset-0"></div>
+      {% else %}
+        <div class="text-center p-6 text-gray-500">
+          <span class="material-icons text-5xl mb-2 text-gray-300">map</span>
+          <p>مختصات جغرافیایی برای این چک‌پوینت ثبت نشده است.</p>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Dynamic Data Schemas Section -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+  <h3 class="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3 mb-4 flex items-center gap-2">
+    <span class="material-icons text-indigo-600">assignment</span> فیلدهای داده مرتبط (شما)
+  </h3>
+  
+  <div class="overflow-x-auto">
+    <table class="w-full text-right border-collapse">
+      <thead class="bg-indigo-50 border-b-2 border-indigo-200">
+        <tr>
+          <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">نام ستون / فیلد</th>
+          <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">نوع داده فیلد</th>
+          <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">قابل مشاهده</th>
+          <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">قابل ویرایش</th>
+          <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">قابل ثبت</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for schema in schemas %}
+        <tr class="{% cycle 'bg-gray-100' 'bg-white' %} hover:bg-indigo-50 transition">
+          <td class="p-2 text-sm font-semibold text-gray-900 text-center border-b border-x border-gray-200">{{ schema.event_schema.column_name }}</td>
+          <td class="p-2 text-sm text-gray-700 text-center border-b border-x border-gray-200">{{ schema.event_schema.get_data_type_display|default:schema.event_schema.data_type }}</td>
+          <td class="p-2 text-center border-b border-x border-gray-200">
+            {% if schema.can_view %}
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-700"><span class="material-icons text-base">check</span></span>
+            {% else %}
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-400"><span class="material-icons text-base">close</span></span>
+            {% endif %}
+          </td>
+          <td class="p-2 text-center border-b border-x border-gray-200">
+            {% if schema.can_edit %}
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-700"><span class="material-icons text-base">check</span></span>
+            {% else %}
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-400"><span class="material-icons text-base">close</span></span>
+            {% endif %}
+          </td>
+          <td class="p-2 text-center border-b border-x border-gray-200">
+            {% if schema.can_fill %}
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-green-100 text-green-700"><span class="material-icons text-base">check</span></span>
+            {% else %}
+              <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-gray-400"><span class="material-icons text-base">close</span></span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center p-6 text-gray-500 border-b border-x border-gray-200">هیچ فیلد داده‌ای به این چک‌پوینت تخصیص داده نشده است.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Recent Check-in History -->
+<div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+  <h3 class="text-lg font-bold text-gray-800 border-b border-gray-100 pb-3 mb-4 flex items-center gap-2">
+    <span class="material-icons text-indigo-600">history</span> تاریخچه ۵۰ چک‌این اخیر در این ایستگاه
+  </h3>
+  
+  <div class="overflow-x-auto">
+    <table class="w-full text-right border-collapse min-w-[1000px]">
+      <thead class="bg-indigo-50 border-b-2 border-indigo-200">
+        <tr>
+          <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200 w-12">ردیف</th>
+          <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200 w-16">شناسه</th>
+          <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">شخص شرکت‌کننده</th>
+          <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">زمان ثبت</th>
+          <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">اپراتور</th>
+          <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">وضعیت</th>
+          <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">نتیجه</th>
+          <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">توضیحات</th>
+          <th class="p-3 text-sm font-semibold text-center border-b border-x border-indigo-200">داده‌های ثبت‌شده</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for checkin in checkins %}
+        <tr class="{% cycle 'bg-gray-100' 'bg-white' %} hover:bg-indigo-50 transition">
+          <td class="p-2 text-sm text-gray-700 text-center border-b border-x border-gray-200">{{ forloop.counter }}</td>
+          <td class="p-2 text-sm text-gray-700 text-center border-b border-x border-gray-200">{{ checkin.id }}</td>
+          <td class="p-2 text-sm text-gray-700 text-center border-b border-x border-gray-200 whitespace-nowrap">{{ checkin.person.name|default:"-" }}</td>
+          <td class="p-2 text-sm text-gray-700 text-center border-b border-x border-gray-200 whitespace-nowrap" dir="ltr">{{ checkin.timestamp|to_jalali }}</td>
+          <td class="p-2 text-sm text-gray-700 text-center border-b border-x border-gray-200">{{ checkin.user.username|default:"-" }}</td>
+          <td class="p-2 text-center border-b border-x border-gray-200">
+            {% if checkin.is_valid %}
+              <span class="inline-flex items-center gap-1 bg-sky-100 text-sky-700 px-2 py-1 rounded-full text-xs font-semibold">
+                <span class="material-icons text-xs">check_circle</span> صحیح
+              </span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-2 py-1 rounded-full text-xs font-semibold">
+                <span class="material-icons text-xs">unpublished</span> ناصحیح
+              </span>
+            {% endif %}
+          </td>
+          <td class="p-2 text-center border-b border-x border-gray-200">
+            {% if not checkin.is_valid %}
+              <span>-</span>
+            {% elif checkin.pending %}
+              <span class="inline-flex items-center gap-1 bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full text-xs font-semibold">
+                <span class="material-icons text-xs">hourglass_empty</span> در انتظار
+              </span>
+            {% elif checkin.is_approved %}
+              <span class="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-semibold">
+                <span class="material-icons text-xs">check</span> پذیرفته شده
+              </span>
+            {% else %}
+              <span class="inline-flex items-center gap-1 bg-red-100 text-red-700 px-2 py-1 rounded-full text-xs font-semibold">
+                <span class="material-icons text-xs">close</span> رد شده
+              </span>
+            {% endif %}
+          </td>
+          <td class="p-2 text-sm text-gray-700 border-b border-x border-gray-200 text-center whitespace-pre-wrap truncate max-w-[150px]" title="{{ checkin.description }}">{{ checkin.description|default:"-" }}</td>
+          <td class="p-1 border-b border-x border-gray-200">
+            <div class="flex flex-wrap gap-1 p-1 text-xs overflow-x-auto justify-center">
+              {% for data in checkin.prefetched_data_list %}
+                <div class="inline-block py-1 px-2 rounded-lg bg-gray-200 border border-gray-300 text-gray-800">
+                  <strong class="font-semibold">{{ data.event_schema.column_name }}:</strong>
+                  <span class="mr-1">
+                    {% if data.text_value is not None %}{{ data.text_value }}{% endif %}
+                    {% if data.num_value is not None %}{{ data.num_value }}{% endif %}
+                    {% if data.bool_value is not None %}{{ data.bool_value|yesno:"بله,خیر" }}{% endif %}
+                    {% if data.date_value is not None %}{{ data.date_value|to_jalali }}{% endif %}
+                  </span>
+                </div>
+              {% empty %}
+                <span class="text-center w-full text-gray-400">-</span>
+              {% endfor %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="9" class="text-center p-6 text-gray-500">هیچ چک‌اینی در این ایستگاه یافت نشد.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Modal for Edit Checkpoint -->
+<div id="editCheckpointModal" class="hidden fixed inset-0 bg-black bg-opacity-40 backdrop-blur-sm flex justify-center items-center z-[9999]">
+  <div class="bg-white rounded-xl shadow-xl w-full max-w-md p-6 relative max-h-[80vh] overflow-y-auto">
+    <button onclick="closeEditModal()" class="absolute top-2 left-2 text-gray-400 hover:text-gray-600">
+      <span class="material-icons">close</span>
+    </button>
+    <h3 class="text-xl font-bold mb-4 text-indigo-700">ویرایش چک‌پوینت</h3>
+    
+    <form class="space-y-4" id="editCheckpointForm" method="POST" action="{% url 'events:checkpoint_edit' checkpoint.id %}">
+      {% csrf_token %}
+      <input hidden name="origin" value="checkpoint_detail" />
+      
+      <div>
+        <label for="name" class="block text-sm font-medium text-gray-700 mb-1">نام</label>
+        <input type="text" id="name" name="name" value="{{ checkpoint.name }}" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="مثال: دروازه اصلی">
+      </div>
+      <div>
+        <label for="path" class="block text-sm font-medium text-gray-700 mb-1">مسیر</label>
+        <input list="paths" id="path" name="path" value="{{ checkpoint.path_id }}" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="جستجو کنید...">
+        <datalist id="paths">
+          <option value="{{ checkpoint.path_id }}">{{ checkpoint.path.name }}</option>
+        </datalist>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label for="color" class="block text-sm font-medium text-gray-700 mb-1">رنگ</label>
+          <input type="color" id="color" name="color" value="{{ checkpoint.color|default:'#4f46e5' }}" class="w-full h-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer">
+        </div>
+        <div>
+          <label for="order" class="block text-sm font-medium text-gray-700 mb-1">ترتیب</label>
+          <input type="number" id="order" name="order" value="{{ checkpoint.order }}" min="1" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="مثال: 1">
+        </div>
+      </div>
+      <div>
+        <label for="location_description" class="block text-sm font-medium text-gray-700 mb-1">محل وقوع</label>
+        <input type="text" id="location_description" name="location_description" value="{{ checkpoint.location_description }}" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="مثال: دروازه اصلی">
+      </div>
+      <div>
+        <div class="flex justify-between items-center mb-1">
+          <label class="block text-sm font-medium text-gray-700">مختصات جغرافیایی</label>
+          <button type="button" onclick="fetchLocation(this)" class="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 transition" title="دریافت موقعیت فعلی">
+            <span class="material-icons text-base">my_location</span>
+            <span>دریافت موقعیت فعلی (GPS)</span>
+          </button>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <input type="number" id="latitude" name="latitude" value="{{ checkpoint.latitude|default:'' }}" step="any" min="-90" max="90" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="عرض جغرافیایی (مثال: 35.6892)" dir="ltr">
+          </div>
+          <div>
+            <input type="number" id="longitude" name="longitude" value="{{ checkpoint.longitude|default:'' }}" step="any" min="-180" max="180" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="طول جغرافیایی (مثال: 51.3890)" dir="ltr">
+          </div>
+        </div>
+      </div>
+      <div class="relative">
+        <label for="user" class="block text-sm font-medium text-gray-700 mb-1">کاربر</label>
+        <input type="text" id="user" name="user" value="{{ checkpoint.user.username|default:'' }}" class="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500" placeholder="نام کاربر را تایپ کنید...">
+        <div id="user-suggestions" class="absolute w-full bg-white border border-gray-300 rounded-md mt-1 max-h-40 overflow-y-auto z-50 hidden"></div>
+      </div>
+      <div class="space-y-2">
+        <label class="block text-sm font-medium text-gray-700 mb-1">گزینه‌ها</label>
+        <div class="flex items-center">
+          <label class="flex items-center gap-2 text-sm text-gray-600">
+            <input name="allow_duplicate_checkin" type="checkbox" class="form-checkbox" {% if checkpoint.allow_duplicate_checkin %}checked{% endif %}> اجازه چک‌این تکراری
+          </label>
+        </div>
+        <div class="flex items-center">
+          <label class="flex items-center gap-2 text-sm text-gray-600">
+            <input name="is_mandatory" type="checkbox" class="form-checkbox" {% if checkpoint.is_mandatory %}checked{% endif %}> اجباری باشد
+          </label>
+        </div>
+      </div>
+      <div class="flex justify-end">
+        <button type="submit" class="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 shadow">ثبت</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="{% static 'core/js/leaflet.js' %}"></script>
+<script>
+  function openEditModal() {
+    document.getElementById('editCheckpointModal').classList.remove('hidden');
+  }
+
+  function closeEditModal() {
+    document.getElementById('editCheckpointModal').classList.add('hidden');
+  }
+
+  function fetchLocation(btn) {
+    if (navigator.geolocation) {
+      const icon = btn.querySelector('.material-icons');
+      icon.textContent = 'hourglass_empty';
+      icon.classList.add('animate-spin');
+      navigator.geolocation.getCurrentPosition(
+        function (position) {
+          const form = btn.closest('form');
+          const latInput = form.querySelector('input[name="latitude"]');
+          const lngInput = form.querySelector('input[name="longitude"]');
+          if (latInput) latInput.value = position.coords.latitude;
+          if (lngInput) lngInput.value = position.coords.longitude;
+          icon.textContent = 'my_location';
+          icon.classList.remove('animate-spin');
+        },
+        function (error) {
+          alert('خطا در دریافت موقعیت مکانی. لطفا دسترسی‌ها را بررسی کنید.');
+          icon.textContent = 'my_location';
+          icon.classList.remove('animate-spin');
+        }
+      );
+    } else {
+      alert('مرورگر شما از قابلیت دریافت موقعیت مکانی پشتیبانی نمی‌کند.');
+    }
+  }
+
+  function confirmDelete() {
+    const confirmed = confirm("آیا از حذف این چک‌پوینت مطمئن هستید؟");
+    if (!confirmed) return;
+
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = "{% url 'events:checkpoint_delete' checkpoint.id %}";
+
+    const csrfInput = document.createElement('input');
+    csrfInput.type = 'hidden';
+    csrfInput.name = 'csrfmiddlewaretoken';
+    csrfInput.value = getCsrfToken();
+    form.appendChild(csrfInput);
+
+    // Redirect to checkpoints list after delete
+    const originInput = document.createElement('input');
+    originInput.type = 'hidden';
+    originInput.name = 'origin';
+    originInput.value = 'list';
+    form.appendChild(originInput);
+
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  function getCsrfToken() {
+    const metaTag = document.querySelector('meta[name="csrf-token"]');
+    return metaTag ? metaTag.getAttribute('content') : '';
+  }
+
+  // Autocomplete setup
+  function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  function setupAutocomplete(input, suggestionsDiv) {
+    const fetchSuggestions = debounce(async function(term) {
+      if (term.length < 2) {
+        suggestionsDiv.innerHTML = '';
+        suggestionsDiv.classList.add('hidden');
+        return;
+      }
+
+      try {
+        const response = await fetch(`{% url 'accounts:user_autocomplete' %}?term=${encodeURIComponent(term)}`);
+        const users = await response.json();
+
+        suggestionsDiv.innerHTML = '';
+        if (users.length === 0) {
+          suggestionsDiv.classList.add('hidden');
+          return;
+        }
+
+        users.forEach(user => {
+          const div = document.createElement('div');
+          div.className = 'px-3 py-2 hover:bg-gray-100 cursor-pointer';
+          div.textContent = user.label;
+          div.addEventListener('click', () => {
+            input.value = user.value;
+            suggestionsDiv.innerHTML = '';
+            suggestionsDiv.classList.add('hidden');
+          });
+          suggestionsDiv.appendChild(div);
+        });
+        suggestionsDiv.classList.remove('hidden');
+      } catch (error) {
+        console.error('Error fetching suggestions:', error);
+        suggestionsDiv.innerHTML = '';
+        suggestionsDiv.classList.add('hidden');
+      }
+    }, 300);
+
+    input.addEventListener('input', (e) => fetchSuggestions(e.target.value));
+    input.addEventListener('focus', (e) => {
+      if (e.target.value.length >= 2) fetchSuggestions(e.target.value);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!input.contains(e.target) && !suggestionsDiv.contains(e.target)) {
+        suggestionsDiv.classList.add('hidden');
+      }
+    });
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    // Autocomplete for operator user in Edit modal
+    const editUserInput = document.querySelector('#editCheckpointModal #user');
+    const editSuggestionsDiv = document.querySelector('#editCheckpointModal #user-suggestions');
+    if (editUserInput && editSuggestionsDiv) {
+      setupAutocomplete(editUserInput, editSuggestionsDiv);
+    }
+
+    // Toggle checkpoint status
+    const statusCheckbox = document.getElementById('checkpointStatusToggle');
+    if (statusCheckbox) {
+      statusCheckbox.addEventListener('change', function () {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = "{% url 'events:checkpoint_toggle_status' %}";
+        form.style.display = 'none';
+
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = getCsrfToken();
+        form.appendChild(csrfInput);
+
+        const idInput = document.createElement('input');
+        idInput.type = 'hidden';
+        idInput.name = 'id';
+        idInput.value = "{{ checkpoint.id }}";
+        form.appendChild(idInput);
+
+        const activeInput = document.createElement('input');
+        activeInput.type = 'hidden';
+        activeInput.name = 'active';
+        activeInput.value = this.checked ? 'true' : 'false';
+        form.appendChild(activeInput);
+
+        const originInput = document.createElement('input');
+        originInput.type = 'hidden';
+        originInput.name = 'origin';
+        originInput.value = 'checkpoint_detail';
+        form.appendChild(originInput);
+
+        document.body.appendChild(form);
+        form.submit();
+      });
+    }
+
+    // Map initialization
+    {% if checkpoint.latitude and checkpoint.longitude %}
+      try {
+        const map = L.map('checkpointMap').setView([{{ checkpoint.latitude }}, {{ checkpoint.longitude }}], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        }).addTo(map);
+
+        L.circleMarker([{{ checkpoint.latitude }}, {{ checkpoint.longitude }}], {
+            radius: 12,
+            color: "{{ checkpoint.color|default:'#4f46e5' }}",
+            fillColor: "{{ checkpoint.color|default:'#4f46e5' }}",
+            fillOpacity: 0.8
+        }).addTo(map).bindPopup("<strong>{{ checkpoint.name }}</strong><br>{{ checkpoint.location_description|default:'' }}");
+      } catch (e) {
+        console.error("Map initialization failed: ", e);
+      }
+    {% endif %}
+  });
+</script>
+{% endblock %}

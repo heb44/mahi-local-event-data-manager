@@ -61,10 +61,14 @@ def checkpoint_edit(request: HttpRequest, cp_id: int) -> HttpResponse:
         messages.success(request, 'چک‌پوینت با موفقیت ویرایش شد.')
         if origin == 'detail':
             return redirect('events:path_detail', checkpoint.path.id)
+        elif origin == 'checkpoint_detail':
+            return redirect('events:checkpoint_detail', checkpoint.id)
     else:
         messages.error(request, form.errors.as_text())
         if origin == 'detail':
             return redirect('events:path_detail', request.POST.get('path') or checkpoint.path.id)
+        elif origin == 'checkpoint_detail':
+            return redirect('events:checkpoint_detail', checkpoint.id)
     return redirect('events:checkpoints')
 
 
@@ -77,7 +81,7 @@ def toggle_checkpoint_status(request: HttpRequest) -> HttpResponse:
         return redirect('events:checkpoints')
 
     checkpoint = get_object_or_404(Checkpoint, id=form.cleaned_data['id'])
-    origin_is_detail = form.cleaned_data['origin'] == 'detail'
+    origin = form.cleaned_data['origin']
     try:
         checkpoint.is_active = form.cleaned_data['active']
         checkpoint.save(update_fields=['is_active'])
@@ -85,6 +89,33 @@ def toggle_checkpoint_status(request: HttpRequest) -> HttpResponse:
     except Exception as exc:
         messages.error(request, str(exc))
 
-    if origin_is_detail:
+    if origin == 'detail':
         return redirect('events:path_detail', checkpoint.path.id)
+    elif origin == 'checkpoint_detail':
+        return redirect('events:checkpoint_detail', checkpoint.id)
     return redirect('events:checkpoints')
+
+
+@login_required
+@require_GET
+def checkpoint_detail(request: HttpRequest, cp_id: int) -> HttpResponse:
+    checkpoint = get_object_or_404(
+        Checkpoint.objects.select_related('path', 'path__event', 'user'),
+        id=cp_id
+    )
+    schemas = checkpoint.schemas.select_related('event_schema').order_by('event_schema__column_name')
+    
+    from operations.models import CheckIn
+    checkins = CheckIn.objects.filter(checkpoint=checkpoint).select_related('person', 'user').prefetch_related('data', 'data__event_schema').order_by('-timestamp')[:50]
+    
+    for ci in checkins:
+        ci.prefetched_data_list = list(ci.data.all())
+        
+    context = {
+        'checkpoint': checkpoint,
+        'schemas': schemas,
+        'checkins': checkins,
+        'active_page': 'checkpoints',
+    }
+    return render(request, 'core/checkpoint_detail.html', context=context)
+
