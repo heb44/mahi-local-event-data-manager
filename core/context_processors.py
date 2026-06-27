@@ -5,7 +5,10 @@ def global_settings(request):
     use_persian_digits = False
     if request.user.is_authenticated:
         try:
-            user_settings, _ = UserSettings.objects.get_or_create(user=request.user)
+            user_settings = getattr(request.user, '_settings_cache', None)
+            if user_settings is None:
+                user_settings, _ = UserSettings.objects.get_or_create(user=request.user)
+                request.user._settings_cache = user_settings
             use_persian_digits = user_settings.use_persian_digits
         except Exception:
             pass

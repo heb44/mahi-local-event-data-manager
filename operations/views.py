@@ -25,7 +25,10 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     if not active_event:
         active_event = Event.objects.order_by(F('last_stop_time').desc(nulls_last=True)).first()
 
-    user_settings, _ = UserSettings.objects.get_or_create(user=request.user)
+    user_settings = getattr(request.user, '_settings_cache', None)
+    if user_settings is None:
+        user_settings, _ = UserSettings.objects.get_or_create(user=request.user)
+        request.user._settings_cache = user_settings
     limit = user_settings.dashboard_event_count
     latest_checkins = CheckIn.objects.select_related('person', 'checkpoint').order_by('-timestamp')[:limit]
 
