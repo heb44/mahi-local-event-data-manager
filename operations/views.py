@@ -27,7 +27,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
 
     latest_checkins = CheckIn.objects.select_related('person', 'checkpoint').order_by('-timestamp')[:5]
     latest_events_text = ' | '.join(
-        f'New Check-in: {checkin.person.name} {checkin.person.last_name} @ {checkin.checkpoint.name} - '
+        f'ثبت جدید: {checkin.person.name} {checkin.person.last_name} در {checkin.checkpoint.name} - '
         f"{checkin.timestamp.strftime('%Y-%m-%d %H:%M')}"
         for checkin in latest_checkins
     )
@@ -168,7 +168,7 @@ def checkin_search(request: HttpRequest) -> HttpResponse:
         return render(
             request,
             'core/checkin/checkin_result.html',
-            {'msgs': [('error', 'Invalid Person or Checkpoint.')]},
+            {'msgs': [('error', 'شخص یا چک‌پوینت نامعتبر است.')]},
         )
 
     if not result['ok']:
@@ -201,10 +201,10 @@ def checkin_perform(request: HttpRequest) -> HttpResponse:
     form = CheckInPerformForm(request.POST, event=event, user=request.user)
 
     if event.deleted is not None or not event.is_active:
-        return render(request, 'core/checkin/checkin_result.html', {'msgs': [('error', 'Event is not active/valid.')]})
+        return render(request, 'core/checkin/checkin_result.html', {'msgs': [('error', 'رویداد فعال یا معتبر نیست.')]})
 
     if person.deleted is not None:
-        return render(request, 'core/checkin/checkin_result.html', {'msgs': [('error', 'Person deleted.')]})
+        return render(request, 'core/checkin/checkin_result.html', {'msgs': [('error', 'شخص حذف شده است.')]})
 
     if not form.is_valid():
         messages_list.extend(('error', error) for error in form.non_field_errors())
@@ -237,8 +237,8 @@ def checkin_delete(request: HttpRequest, checkin_id: int) -> JsonResponse:
     try:
         checkin = get_object_or_404(CheckIn, id=checkin_id)
         checkin.delete()
-        messages.success(request, f'Check-in {checkin_id} deleted.')
-        return JsonResponse({'success': True, 'message': 'Deleted.'})
+        messages.success(request, f'چک‌این {checkin_id} با موفقیت حذف شد.')
+        return JsonResponse({'success': True, 'message': 'حذف شد.'})
     except Exception as exc:
         return JsonResponse({'success': False, 'error': str(exc)}, status=500)
 
@@ -257,9 +257,9 @@ def checkin_bulk_action(request: HttpRequest) -> HttpResponse:
             checkin_ids = list(checkins_to_delete.values_list('id', flat=True))
             if checkin_ids:
                 checkins_to_delete.delete()
-                messages.success(request, f'{len(checkin_ids)} check-ins deleted.')
+                messages.success(request, f'{len(checkin_ids)} چک‌این با موفقیت حذف شدند.')
             else:
-                messages.warning(request, 'No valid check-ins found to delete.')
+                messages.warning(request, 'هیچ چک‌این معتبری برای حذف یافت نشد.')
         except Exception as exc:
             messages.error(request, f'Error: {exc}')
 

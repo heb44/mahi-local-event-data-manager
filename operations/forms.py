@@ -14,7 +14,7 @@ class CheckInSearchForm(forms.Form):
 
 class CheckInPerformForm(forms.Form):
     ci = forms.IntegerField(min_value=1)
-    action = forms.ChoiceField(choices=[('approve', 'Approve'), ('reject', 'Reject')])
+    action = forms.ChoiceField(choices=[('approve', 'پذیرش'), ('reject', 'رد')])
     description = forms.CharField(required=False)
 
     def __init__(self, *args, event=None, user=None, **kwargs):
@@ -68,18 +68,18 @@ class CheckInPerformForm(forms.Form):
             try:
                 return float(raw_value)
             except (TypeError, ValueError) as exc:
-                raise forms.ValidationError(f'Invalid value for {schema.column_name}.') from exc
+                raise forms.ValidationError(f'مقدار نامعتبر برای فیلد «{schema.column_name}».') from exc
         if schema.data_type == 'date':
             try:
                 return convert_jalali_to_gregorian(raw_value)
             except Exception as exc:
-                raise forms.ValidationError(f'Invalid value for {schema.column_name}.') from exc
+                raise forms.ValidationError(f'مقدار نامعتبر برای فیلد «{schema.column_name}».') from exc
 
         return raw_value
 
 
 class CheckInBulkActionForm(forms.Form):
-    action = forms.ChoiceField(choices=[('delete', 'Delete')])
+    action = forms.ChoiceField(choices=[('delete', 'حذف')])
     selected_ids = forms.ModelMultipleChoiceField(
         queryset=CheckIn.objects.all(),
     )
