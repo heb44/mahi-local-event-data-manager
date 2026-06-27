@@ -237,9 +237,8 @@ class CheckInFilterService:
         queryset = queryset.filter(filters)
 
         if 'data' in params['search_fields'] and params['data_key'] and params['data_value']:
-            data_q = Q(data__event_schema__column_name__iexact=params['data_key']) & (
-                Q(data__text_value__icontains=params['data_value'])
-                | Q(data__num_value__icontains=params['data_value'])
+            data_q = Q(data__event_schema__column_name__iexact=params['data_key']) & Q(
+                data__value__icontains=params['data_value']
             )
             queryset = queryset.filter(data_q).distinct()
 

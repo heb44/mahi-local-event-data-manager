@@ -38,24 +38,69 @@ class CheckInData(BaseSafeDeleteModel):
     check_in = models.ForeignKey(CheckIn, on_delete=models.CASCADE, related_name="data")
     event_schema = models.ForeignKey(EventSchema, on_delete=models.CASCADE, related_name="data")
 
-    text_value = models.TextField(null=True)
-    num_value = models.FloatField(null=True)
-    bool_value = models.BooleanField(null=True)
-    date_value = models.DateField(null=True)
+    value = models.JSONField(null=True)
     created_at = models.DateTimeField(auto_now=True)
 
     history = HistoricalRecords()
 
-    def get_value(self):
-        if self.text_value is not None:
-            return self.text_value
-        if self.num_value is not None:
-            return self.num_value
-        if self.bool_value is not None:
-            return self.bool_value
-        if self.date_value is not None:
-            return self.date_value
+    @property
+    def text_value(self):
+        if self.event_schema and self.event_schema.data_type == 'text':
+            return self.value
         return None
+
+    @text_value.setter
+    def text_value(self, val):
+        if val is not None:
+            self.value = val
+
+    @property
+    def num_value(self):
+        if self.event_schema and self.event_schema.data_type == 'number':
+            return self.value
+        return None
+
+    @num_value.setter
+    def num_value(self, val):
+        if val is not None:
+            self.value = val
+
+    @property
+    def bool_value(self):
+        if self.event_schema and self.event_schema.data_type == 'boolean':
+            return self.value
+        return None
+
+    @bool_value.setter
+    def bool_value(self, val):
+        if val is not None:
+            self.value = val
+
+    @property
+    def date_value(self):
+        if self.event_schema and self.event_schema.data_type == 'date':
+            if isinstance(self.value, str):
+                from django.utils.dateparse import parse_date
+                return parse_date(self.value)
+            return self.value
+        return None
+
+    @date_value.setter
+    def date_value(self, val):
+        from datetime import date
+        if val is not None:
+            if isinstance(val, date):
+                self.value = val.isoformat()
+            else:
+                self.value = val
+
+    def get_value(self):
+        if self.event_schema and self.event_schema.data_type == 'date':
+            if isinstance(self.value, str):
+                from django.utils.dateparse import parse_date
+                parsed = parse_date(self.value)
+                return parsed if parsed is not None else self.value
+        return self.value
 
     def __str__(self):
         value = self.get_value()

@@ -36,7 +36,7 @@ class CheckInDataAdmin(admin.ModelAdmin):
     """
     list_display = ('check_in', 'event_schema', 'get_value_preview', 'created_at')
     list_filter = ('event_schema__data_type', 'event_schema__event')
-    search_fields = ('text_value', 'check_in__person__last_name')
+    search_fields = ('value', 'check_in__person__last_name')
     raw_id_fields = ('check_in', 'event_schema')
 
     def get_value_preview(self, obj):
