@@ -205,6 +205,15 @@ def api_report_aggregate(request):
                     {'name': 'در انتظار', 'count': pending},
                 ]
                 data = [s for s in status_raw if s['count'] > 0]
+            elif field_key == 'date':
+                import jdatetime
+                agg = filtered_qs.annotate(date_only=TruncDate('timestamp')).values('date_only').annotate(count=Count('id')).order_by('date_only')
+                for item in agg:
+                    if item['date_only']:
+                        name = jdatetime.date.fromgregorian(date=item['date_only']).strftime('%Y/%m/%d')
+                    else:
+                        name = 'نامشخص'
+                    data.append({'name': name, 'count': item['count']})
         
         elif field_type == 'dynamic' and field_key.isdigit():
             schema_id = int(field_key)

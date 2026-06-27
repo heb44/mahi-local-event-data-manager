@@ -4,13 +4,13 @@
 {% block title %}گزارش اعتبارسنجی و ممیزی{% endblock %}
 
 {% block content %}
-<div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-    <div>
-        <h2 class="text-2xl font-bold text-gray-800">ممیزی اعتبارسنجی و رد شده‌ها</h2>
-        <p class="text-gray-500 mt-1">پایش امنیتی و عملیاتی خطاهای چک‌این</p>
-    </div>
-    <form method="get" class="flex gap-2">
-        <select name="event_id" onchange="this.form.submit()" class="bg-white border border-gray-300 rounded-md shadow-sm px-3 py-2">
+<div class="flex justify-between items-center mb-6 gap-2 min-w-0">
+    <h2 class="text-lg sm:text-2xl font-bold text-gray-900 truncate" title="ممیزی اعتبارسنجی و رد شده‌ها">ممیزی اعتبارسنجی و رد شده‌ها</h2>
+</div>
+
+<div class="flex flex-col lg:flex-row lg:justify-end lg:items-center gap-4 mb-4">
+    <form method="get" class="flex gap-2 items-center w-full lg:w-auto">
+        <select name="event_id" onchange="this.form.submit()" class="bg-gray-50 border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full lg:min-w-[200px]">
             <option value="">همه رویدادها</option>
             {% for evt in events %}
             <option value="{{ evt.id }}" {% if evt.id == selected_event_id %}selected{% endif %}>{{ evt.name }}</option>

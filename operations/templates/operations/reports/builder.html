@@ -1,13 +1,12 @@
 {% extends 'core/base.html' %}
 
-{% block title %}گزارش‌ساز پویا (BI Studio){% endblock %}
+{% block title %}گزارش‌ساز پویا{% endblock %}
 
 {% block content %}
 <!-- Page Header matching project standard -->
 <div class="flex justify-between items-center mb-6 gap-2 min-w-0">
     <div>
-        <h2 class="text-lg sm:text-2xl font-bold text-gray-900 truncate" title="گزارش‌ساز پویا">گزارش‌ساز پویا (BI Studio)</h2>
-        <p class="text-gray-500 text-sm mt-1 hidden sm:block">نمودارهای دلخواه خود را اضافه کنید و عملکرد را تحلیل کنید.</p>
+        <h2 class="text-lg sm:text-2xl font-bold text-gray-900 truncate" title="گزارش‌ساز پویا">گزارش‌ساز پویا</h2>
     </div>
 </div>
 
@@ -94,12 +93,18 @@
     <!-- Main Content -->
     <div class="w-full lg:w-3/4">
         <!-- Charts Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 items-start">
             <template x-for="(chart, index) in charts" :key="chart.id">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col relative overflow-hidden">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col relative overflow-hidden transition-all duration-300 self-start">
                     <div class="p-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
                         <h4 class="font-bold text-gray-800 text-sm truncate" x-text="chart.title"></h4>
                         <div class="flex items-center gap-1">
+                            <button x-show="index > 0" @click="moveChart(index, -1)" class="text-gray-400 hover:text-indigo-600 transition p-1" title="جابجایی به راست">
+                                <span class="material-icons text-sm">arrow_forward</span>
+                            </button>
+                            <button x-show="index < charts.length - 1" @click="moveChart(index, 1)" class="text-gray-400 hover:text-indigo-600 transition p-1" title="جابجایی به چپ">
+                                <span class="material-icons text-sm">arrow_back</span>
+                            </button>
                             <button @click="chart.expanded = !chart.expanded" class="text-gray-400 hover:text-indigo-600 transition p-1">
                                 <span class="material-icons text-sm" x-text="chart.expanded ? 'fullscreen_exit' : 'fullscreen'"></span>
                             </button>
@@ -171,6 +176,7 @@
                         <option value="checkpoint">توزیع بین چک‌پوینت‌ها</option>
                         <option value="user">عملکرد اپراتورها</option>
                         <option value="event">توزیع بین رویدادها</option>
+                        <option value="date">روند ثبت در طول زمان (روزانه)</option>
                     </select>
                 </div>
                 
@@ -187,7 +193,7 @@
                 
                 <div>
                     <label class="block text-sm font-bold text-gray-700 mb-2">نوع نمودار</label>
-                    <div class="grid grid-cols-3 gap-3">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <label class="border rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer transition" :class="newChart.type === 'pie' ? 'border-indigo-500 bg-indigo-50/50 text-indigo-700 shadow-inner' : 'border-gray-200 hover:bg-gray-50'">
                             <input type="radio" x-model="newChart.type" value="pie" class="hidden">
                             <span class="material-icons text-2xl">pie_chart</span>
@@ -202,6 +208,11 @@
                             <input type="radio" x-model="newChart.type" value="bar" class="hidden">
                             <span class="material-icons text-2xl">bar_chart</span>
                             <span class="text-xs font-bold">میله‌ای</span>
+                        </label>
+                        <label class="border rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer transition" :class="newChart.type === 'line' ? 'border-indigo-500 bg-indigo-50/50 text-indigo-700 shadow-inner' : 'border-gray-200 hover:bg-gray-50'">
+                            <input type="radio" x-model="newChart.type" value="line" class="hidden">
+                            <span class="material-icons text-2xl">show_chart</span>
+                            <span class="text-xs font-bold text-center">روند (زمانی)</span>
                         </label>
                     </div>
                 </div>
@@ -263,6 +274,18 @@ document.addEventListener('alpine:init', () => {
             this.refreshAllCharts();
         },
         
+        moveChart(index, direction) {
+            if (index + direction < 0 || index + direction >= this.charts.length) return;
+            const temp = this.charts[index];
+            this.charts[index] = this.charts[index + direction];
+            this.charts[index + direction] = temp;
+            
+            // Re-render canvases to update chart instances bindings
+            this.$nextTick(() => {
+                this.refreshAllCharts();
+            });
+        },
+        
         addChart() {
             if(this.newChart.fieldType === 'dynamic' && !this.newChart.fieldKeyDynamic) {
                 alert('هیچ فیلد پویایی برای انتخاب وجود ندارد.');
@@ -278,7 +301,8 @@ document.addEventListener('alpine:init', () => {
                     'status': 'توزیع وضعیت اعتبارسنجی',
                     'checkpoint': 'ترافیک چک‌پوینت‌ها',
                     'user': 'عملکرد اپراتورها',
-                    'event': 'توزیع رویدادها'
+                    'event': 'توزیع رویدادها',
+                    'date': 'روند روزانه'
                 };
                 title = titles[key];
             } else {
@@ -375,10 +399,14 @@ document.addEventListener('alpine:init', () => {
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'تعداد',
+                        label: chart.fieldKey === 'date' ? 'تعداد چک‌این‌ها' : 'تعداد',
                         data: values,
-                        backgroundColor: bgColors,
-                        borderWidth: 0,
+                        backgroundColor: chart.type === 'line' ? 'rgba(99, 102, 241, 0.1)' : bgColors,
+                        borderColor: chart.type === 'line' ? '#4f46e5' : undefined,
+                        borderWidth: chart.type === 'line' ? 3 : 0,
+                        pointBackgroundColor: chart.type === 'line' ? '#4f46e5' : undefined,
+                        tension: chart.type === 'line' ? 0.3 : 0,
+                        fill: chart.type === 'line',
                         borderRadius: chart.type === 'bar' ? 4 : 0
                     }]
                 },
@@ -387,12 +415,12 @@ document.addEventListener('alpine:init', () => {
                     maintainAspectRatio: false,
                     plugins: {
                         legend: {
-                            display: chart.type !== 'bar',
+                            display: (chart.type !== 'bar' && chart.type !== 'line'),
                             position: 'bottom',
                             labels: { font: { family: 'Vazirmatn' } }
                         }
                     },
-                    scales: chart.type === 'bar' ? {
+                    scales: (chart.type === 'bar' || chart.type === 'line') ? {
                         y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
                         x: { grid: { display: false } }
                     } : {}

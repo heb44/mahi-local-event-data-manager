@@ -39,6 +39,7 @@ class CheckInFilterParams(TypedDict):
     data_key: str
     data_value: str
     selected_event_id: str
+    selected_path_id: str
     selected_cp_ids: list[str]
     order_by: str
     direction: str
@@ -170,6 +171,7 @@ class CheckInFilterService:
             'order_by': params['order_by'],
             'direction': params['direction'],
             'selected_event_id': params['selected_event_id'],
+            'selected_path_id': params['selected_path_id'],
             'selected_cp_ids': params['selected_cp_ids'],
             'selected_user_id': params['selected_user_id'],
             'start_date': params['start_date_str'],
@@ -187,6 +189,7 @@ class CheckInFilterService:
             'data_key': request.GET.get('dk', '').strip(),
             'data_value': request.GET.get('dv', '').strip(),
             'selected_event_id': request.GET.get('event_id', '').strip(),
+            'selected_path_id': request.GET.get('path_id', '').strip(),
             'selected_cp_ids': request.GET.getlist('cp_ids'),
             'order_by': request.GET.get('ob', '-timestamp'),
             'direction': request.GET.get('dir', 'desc'),
@@ -213,6 +216,8 @@ class CheckInFilterService:
 
         if params['selected_event_id'].isdigit():
             filters &= Q(checkpoint__path__event_id=int(params['selected_event_id']))
+        if params['selected_path_id'].isdigit():
+            filters &= Q(checkpoint__path_id=int(params['selected_path_id']))
         if params['selected_cp_ids']:
             filters &= Q(checkpoint_id__in=params['selected_cp_ids'])
         if params['selected_user_id'].isdigit():

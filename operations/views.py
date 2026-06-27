@@ -97,6 +97,7 @@ def checkins_list(request: HttpRequest) -> HttpResponse:
     context = filter_sort_paginate_checkins(request, base_qs, page_size=20)
     context['active_page'] = 'checkins'
     context['all_events'] = Event.objects.order_by('name')
+    context['all_paths'] = Path.objects.select_related('event').order_by('event__name', 'name')
     context['all_checkpoints'] = Checkpoint.objects.select_related('path__event').order_by('path__event__name', 'name')
     context['all_users'] = User.objects.filter(is_active=True).order_by('username')
     return render(request, 'core/checkin/checkins_list.html', context)

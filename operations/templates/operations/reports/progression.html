@@ -3,18 +3,18 @@
 {% block title %}گزارش پیشرفت مسیر{% endblock %}
 
 {% block content %}
-<div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-    <div>
-        <h2 class="text-2xl font-bold text-gray-800">تحلیل پیشرفت مسیر (قیف ورودی)</h2>
-        <p class="text-gray-500 mt-1">بررسی گلوگاه‌ها و روند حضور در ایستگاه‌ها</p>
-    </div>
-    <form method="get" class="flex gap-2">
-        <select name="event_id" onchange="this.form.submit()" class="bg-white border border-gray-300 rounded-md shadow-sm px-3 py-2">
+<div class="flex justify-between items-center mb-6 gap-2 min-w-0">
+    <h2 class="text-lg sm:text-2xl font-bold text-gray-900 truncate" title="تحلیل پیشرفت مسیر">تحلیل پیشرفت مسیر</h2>
+</div>
+
+<div class="flex flex-col lg:flex-row lg:justify-end lg:items-center gap-4 mb-4">
+    <form method="get" class="flex flex-col sm:flex-row gap-2 items-center w-full lg:w-auto">
+        <select name="event_id" onchange="this.form.submit()" class="bg-gray-50 border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:min-w-[150px]">
             {% for evt in events %}
             <option value="{{ evt.id }}" {% if evt.id == selected_event_id %}selected{% endif %}>{{ evt.name }}</option>
             {% endfor %}
         </select>
-        <select name="path_id" onchange="this.form.submit()" class="bg-white border border-gray-300 rounded-md shadow-sm px-3 py-2">
+        <select name="path_id" onchange="this.form.submit()" class="bg-gray-50 border border-gray-300 rounded-lg shadow-sm px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full sm:min-w-[150px]">
             {% for p in paths %}
             <option value="{{ p.id }}" {% if p.id == selected_path_id %}selected{% endif %}>{{ p.name }}</option>
             {% endfor %}
