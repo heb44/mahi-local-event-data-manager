@@ -26,11 +26,6 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         active_event = Event.objects.order_by(F('last_stop_time').desc(nulls_last=True)).first()
 
     latest_checkins = CheckIn.objects.select_related('person', 'checkpoint').order_by('-timestamp')[:5]
-    latest_events = [
-        f'ثبت جدید: {checkin.person.name} {checkin.person.last_name} در {checkin.checkpoint.name} - '
-        f"{checkin.timestamp.strftime('%Y-%m-%d %H:%M')}"
-        for checkin in latest_checkins
-    ]
 
     stats = {
         'connected_users': User.objects.filter(is_active=True).count(),
@@ -68,7 +63,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     context = {
         'active_page': 'dashboard',
         'active_event': active_event,
-        'latest_events': latest_events,
+        'latest_checkins': latest_checkins,
         'stats': stats,
         'active_paths': active_paths,
         'map_paths': map_paths,

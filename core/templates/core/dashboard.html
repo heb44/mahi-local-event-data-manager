@@ -60,7 +60,7 @@
     pointer-events: none;
     white-space: nowrap;
   }
-  .latest-events .text.active {
+  .latest-events .text.current {
     opacity: 1;
     transform: translateY(0);
     pointer-events: auto;
@@ -145,8 +145,8 @@
   <div class="flex items-center h-6">
     <span class="blink-dot"></span>
     <div id="latest-events" class="latest-events flex-1">
-      {% for event in latest_events %}
-        <span class="text">{{ event }}</span>
+      {% for checkin in latest_checkins %}
+        <span class="text">ثبت جدید: {{ checkin.person.name }} {{ checkin.person.last_name }} در {{ checkin.checkpoint.name }} - {{ checkin.timestamp|to_jalali:"%Y/%m/%d %H:%M" }}</span>
       {% empty %}
         <span class="text">هیچ رویداد جدیدی ثبت نشده است</span>
       {% endfor %}
@@ -342,7 +342,7 @@
     const eventItems = document.querySelectorAll('#latest-events .text');
     if (eventItems.length > 1) {
       let currentIndex = 0;
-      eventItems[currentIndex].classList.add('active');
+      eventItems[currentIndex].classList.add('current');
 
       setInterval(() => {
         const currentItem = eventItems[currentIndex];
@@ -350,12 +350,12 @@
         const nextItem = eventItems[currentIndex];
 
         // Exit current
-        currentItem.classList.remove('active');
+        currentItem.classList.remove('current');
         currentItem.classList.add('exit');
 
         // Enter next
         nextItem.classList.remove('exit');
-        nextItem.classList.add('active');
+        nextItem.classList.add('current');
 
         // Cleanup exit class after transition completes (500ms)
         setTimeout(() => {
@@ -363,7 +363,7 @@
         }, 500);
       }, 3000);
     } else if (eventItems.length === 1) {
-      eventItems[0].classList.add('active');
+      eventItems[0].classList.add('current');
     }
   });
 
