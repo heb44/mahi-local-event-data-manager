@@ -161,15 +161,19 @@
                         <div class="pr-5 pt-1 space-y-1">
                             <a href="{% url 'operations:checkins' %}" class="sidebar-link flex items-center gap-3 text-gray-600 hover:bg-indigo-50 hover:text-gray-900 px-3 py-2 rounded-md transition text-sm {% if active_page == 'checkins' %}active{% endif %}">
                                 <span class="material-icons text-xl">assignment_turned_in</span>
-                                چک‌این ها
+                                لیست چک‌این‌ها
                             </a>
-                            <a href="#" class="sidebar-link flex items-center gap-3 text-gray-600 hover:bg-indigo-50 hover:text-gray-900 px-3 py-2 rounded-md transition text-sm {% if active_subpage == 'daily_report' %}active{% endif %}">
-                                <span class="material-icons text-xl">calendar_today</span>
-                                مبتنی‌ بر چک‌پوینت
+                            <a href="{% url 'operations:reports_progression' %}" class="sidebar-link flex items-center gap-3 text-gray-600 hover:bg-indigo-50 hover:text-gray-900 px-3 py-2 rounded-md transition text-sm {% if active_subpage == 'progression' %}active{% endif %}">
+                                <span class="material-icons text-xl">timeline</span>
+                                تحلیل پیشرفت مسیر
                             </a>
-                            <a href="#" class="sidebar-link flex items-center gap-3 text-gray-600 hover:bg-indigo-50 hover:text-gray-900 px-3 py-2 rounded-md transition text-sm {% if active_subpage == 'monthly_report' %}active{% endif %}">
-                                <span class="material-icons text-xl">calendar_month</span>
-                                مبتنی‌ بر شخص
+                            <a href="{% url 'operations:reports_compliance' %}" class="sidebar-link flex items-center gap-3 text-gray-600 hover:bg-indigo-50 hover:text-gray-900 px-3 py-2 rounded-md transition text-sm {% if active_subpage == 'compliance' %}active{% endif %}">
+                                <span class="material-icons text-xl">gpp_maybe</span>
+                                ممیزی اعتبارسنجی
+                            </a>
+                            <a href="{% url 'operations:reports_demographics' %}" class="sidebar-link flex items-center gap-3 text-gray-600 hover:bg-indigo-50 hover:text-gray-900 px-3 py-2 rounded-md transition text-sm {% if active_subpage == 'demographics' %}active{% endif %}">
+                                <span class="material-icons text-xl">pie_chart</span>
+                                تجمیع متادیتا
                             </a>
                         </div>
                     </div>

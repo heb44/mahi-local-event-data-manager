@@ -1,5 +1,5 @@
 from django.urls import path
-from . import views
+from . import views, reports_views
 
 app_name = 'operations'
 
@@ -15,4 +15,8 @@ urlpatterns = [
     path('checkins/bulk-action/', views.checkin_bulk_action, name='checkin_bulk_action'),
 
     path('history/<int:person_id>/', views.person_checkin_history, name='person_history'),
+
+    path('reports/progression/', reports_views.reports_progression, name='reports_progression'),
+    path('reports/compliance/', reports_views.reports_compliance, name='reports_compliance'),
+    path('reports/demographics/', reports_views.reports_demographics, name='reports_demographics'),
 ]

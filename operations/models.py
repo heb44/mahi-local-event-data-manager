@@ -29,6 +29,7 @@ class CheckIn(BaseSafeDeleteModel):
             models.Index(fields=['person', 'checkpoint']),
             models.Index(fields=['timestamp']),
             models.Index(fields=['deleted']),
+            models.Index(fields=['is_valid', 'is_approved']),
         ]
 
 

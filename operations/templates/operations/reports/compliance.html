@@ -1,0 +1,87 @@
+{% extends "core/base.html" %}
+{% load jalali_filters %}
+
+{% block title %}گزارش اعتبارسنجی و ممیزی{% endblock %}
+
+{% block content %}
+<div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div>
+        <h2 class="text-2xl font-bold text-gray-800">ممیزی اعتبارسنجی و رد شده‌ها</h2>
+        <p class="text-gray-500 mt-1">پایش امنیتی و عملیاتی خطاهای چک‌این</p>
+    </div>
+    <form method="get" class="flex gap-2">
+        <select name="event_id" onchange="this.form.submit()" class="bg-white border border-gray-300 rounded-md shadow-sm px-3 py-2">
+            <option value="">همه رویدادها</option>
+            {% for evt in events %}
+            <option value="{{ evt.id }}" {% if evt.id == selected_event_id %}selected{% endif %}>{{ evt.name }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+    <!-- KPIs -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col justify-center items-center">
+        <span class="text-gray-500 text-sm font-bold mb-2">کل خطاهای ثبت‌شده</span>
+        <span class="text-4xl font-black text-gray-800">{{ total_errors }}</span>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex flex-col justify-center items-center">
+        <span class="text-gray-500 text-sm font-bold mb-2">خطاهای ۲۴ ساعت گذشته</span>
+        <span class="text-4xl font-black text-red-600">{{ recent_errors }}</span>
+    </div>
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+        <span class="text-gray-500 text-sm font-bold block mb-4 text-center">توزیع نوع خطا</span>
+        <div class="flex flex-col gap-3">
+            {% for dist in distribution %}
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-3 h-3 rounded-full" style="background-color: {{ dist.color }}"></div>
+                    <span class="text-sm font-medium">{{ dist.name }}</span>
+                </div>
+                <span class="font-bold">{{ dist.count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+    <h3 class="text-lg font-bold text-gray-800 mb-4">جزئیات ممیزی</h3>
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm text-right text-gray-500 responsive-table">
+            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                <tr>
+                    <th class="px-4 py-3">زمان</th>
+                    <th class="px-4 py-3">شخص</th>
+                    <th class="px-4 py-3">چک‌پوینت</th>
+                    <th class="px-4 py-3">اپراتور</th>
+                    <th class="px-4 py-3">وضعیت</th>
+                    <th class="px-4 py-3">توضیحات</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in auditor_logs %}
+                <tr class="border-b hover:bg-gray-50">
+                    <td class="px-4 py-3" dir="ltr">{{ log.timestamp|to_jalali:"%Y/%m/%d %H:%M" }}</td>
+                    <td class="px-4 py-3 font-medium text-gray-900">{{ log.person.name }} {{ log.person.last_name }}</td>
+                    <td class="px-4 py-3">{{ log.checkpoint.name }}</td>
+                    <td class="px-4 py-3">{{ log.user.username }}</td>
+                    <td class="px-4 py-3">
+                        {% if not log.is_valid %}
+                            <span class="bg-red-100 text-red-800 text-xs font-medium px-2.5 py-0.5 rounded">نامعتبر</span>
+                        {% elif not log.is_approved %}
+                            <span class="bg-orange-100 text-orange-800 text-xs font-medium px-2.5 py-0.5 rounded">رد شده</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 truncate max-w-xs tooltip" data-tooltip="{{ log.description }}">{{ log.description|default:"-" }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="px-4 py-8 text-center text-gray-500">موردی یافت نشد.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
