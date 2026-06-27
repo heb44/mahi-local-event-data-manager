@@ -99,12 +99,15 @@ def reports_progression(request):
 
 @login_required
 def reports_compliance(request):
-    event_id = request.GET.get('event_id')
-    
     events = Event.objects.all().order_by('-created_at')
-    if not event_id:
+    
+    # Check if event_id parameter was explicitly passed
+    if 'event_id' in request.GET:
+        event_id = request.GET.get('event_id', '').strip()
+    else:
+        # First page load: default to active event or first event
         active_event = Event.objects.filter(is_active=True).first()
-        event_id = active_event.id if active_event else (events.first().id if events.exists() else None)
+        event_id = str(active_event.id) if active_event else (str(events.first().id) if events.exists() else '')
         
     # Get rejected or invalid checkins
     base_qs = CheckIn.objects.filter(

@@ -7,8 +7,8 @@
 <div class="flex justify-between items-center mb-6 gap-2 min-w-0" x-data>
     <h2 class="text-lg sm:text-2xl font-bold text-gray-800 truncate" title="گزارش‌ساز پویا">گزارش‌ساز پویا</h2>
     <button @click="$dispatch('open-add-modal')" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl shadow transition shrink-0 text-sm font-bold">
-        <span class="material-icons">add_chart</span>
-        <span class="hidden sm:inline">افزودن نمودار جدید</span>
+        <span class="material-icons">add_circle</span>
+        <span class="hidden sm:inline">نمودار جدید</span>
     </button>
 </div>
 
@@ -39,7 +39,7 @@
                 </div>
                 
                 <div>
-                    <label class="block text-sm font-bold text-gray-700 mb-1">کاربر (اپراتور)</label>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">کاربر</label>
                     <select x-model="filters.user_id" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50">
                         <option value="">همه کاربران</option>
                         {% for user in all_users %}

@@ -30,133 +30,86 @@
             </select>
             <button onclick="triggerSort()" class="bg-indigo-600 text-white rounded-lg p-2 hover:bg-indigo-700 transition w-[15%] material-icons">sort_by_alpha</button>
         </div>
-        <div class="relative w-full sm:max-w-[400px]" x-data>
-            <input type="text" id="searchInput" placeholder="جستجو در متن..." value="{{ search_query|default:'' }}"
+        <div class="relative w-full sm:max-w-[400px]">
+            <input type="text" id="searchInput" placeholder="جستجو..." value="{{ search_query|default:'' }}"
                 class="w-full p-3 pl-10 pr-10 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 font-vazir">
             <span class="material-icons absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer hover:text-indigo-600" onclick="triggerSearch()">search</span>
-            <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer hover:text-indigo-600" @click="$dispatch('toggle-filters')" title="فیلترهای پیشرفته">settings</span>
-        </div>
-    </div>
-</div>
-
-<div x-data="{ showFilters: $persist(false).as('checkin_filters_state') }" 
-     @toggle-filters.window="showFilters = !showFilters"
-     x-show="showFilters" 
-     x-cloak
-     class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-    <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-3">
-        <h4 class="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <span class="material-icons text-indigo-600">tune</span>
-            فیلترهای پیشرفته
-        </h4>
-        <button type="button" @click="showFilters = false" class="text-gray-400 hover:text-red-500 transition">
-            <span class="material-icons">close</span>
-        </button>
-    </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <!-- Column 1: Static Filters -->
-        <div class="space-y-5">
-            <div>
-                <label for="eventFilter" class="block text-sm font-bold text-gray-700 mb-1">رویداد</label>
-                <select id="eventFilter" name="event" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50">
-                    <option value="">همه رویدادها</option>
-                    {% for event in all_events %}<option value="{{ event.id }}" {% if event.id|stringformat:"s" == selected_event_id %}selected{% endif %}>{{ event.name }}</option>{% endfor %}
-                </select>
-            </div>
-            <div>
-                <label for="pathFilter" class="block text-sm font-bold text-gray-700 mb-1">مسیر (Route)</label>
-                <select id="pathFilter" name="path_id" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50">
-                    <option value="">همه مسیرها</option>
-                    {% for path in all_paths %}
-                    <option value="{{ path.id }}" {% if path.id|stringformat:"s" == selected_path_id %}selected{% endif %}>{{ path.name }} ({{ path.event.name }})</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label for="userFilter" class="block text-sm font-bold text-gray-700 mb-1">کاربر ثبت‌کننده (اپراتور)</label>
-                <select id="userFilter" name="user_id" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50">
-                    <option value="">همه کاربران</option>
-                    {% for user in all_users %}
-                    <option value="{{ user.id }}" {% if user.id|stringformat:"s" == selected_user_id %}selected{% endif %}>{{ user.username }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-            <div>
-                <label for="statusFilter" class="block text-sm font-bold text-gray-700 mb-1">وضعیت/نتیجه</label>
-                <select id="statusFilter" name="status" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50">
-                    <option value="">همه وضعیت‌ها</option>
-                    <option value="valid" {% if selected_status == 'valid' %}selected{% endif %}>صحیح (بدون در نظر گرفتن پذیرش)</option>
-                    <option value="invalid" {% if selected_status == 'invalid' %}selected{% endif %}>ناصحیح</option>
-                    <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>در انتظار</option>
-                    <option value="approved" {% if selected_status == 'approved' %}selected{% endif %}>پذیرفته شده</option>
-                    <option value="rejected" {% if selected_status == 'rejected' %}selected{% endif %}>رد شده</option>
-                </select>
-            </div>
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label for="startDateFilter" class="block text-sm font-bold text-gray-700 mb-1">از تاریخ</label>
-                    <input type="date" id="startDateFilter" value="{{ start_date|default:'' }}" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50">
-                </div>
-                <div>
-                    <label for="endDateFilter" class="block text-sm font-bold text-gray-700 mb-1">تا تاریخ</label>
-                    <input type="date" id="endDateFilter" value="{{ end_date|default:'' }}" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50">
-                </div>
-            </div>
-        </div>
-
-        <!-- Column 2: Advanced Data Filters -->
-        <div class="space-y-5">
-            <div>
-                <label class="block text-sm font-bold text-gray-700 mb-1">محدود کردن به چک‌پوینت‌ها</label>
-                <div class="h-40 overflow-y-auto border border-gray-300 rounded-lg p-3 bg-gray-50 space-y-2 custom-scrollbar">
-                    {% for checkpoint in all_checkpoints %}
-                    {% ifchanged checkpoint.path.event %}<h5 class="text-xs font-bold text-indigo-600 mt-2 pt-2 border-t border-indigo-100 first:mt-0 first:border-t-0 first:pt-0">{{ checkpoint.path.event.name }}</h5>{% endifchanged %}
-                    <label class="flex items-center gap-2 text-sm text-gray-700 hover:bg-white p-1.5 rounded cursor-pointer transition">
-                        <input type="checkbox" name="cp_ids" value="{{ checkpoint.id }}" {% if checkpoint.id in selected_cp_ids %}checked{% endif %} class="text-indigo-600 rounded"> 
-                        {{ checkpoint.name }}
-                    </label>
-                    {% endfor %}
-                </div>
-            </div>
+            <span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer hover:text-indigo-600" onclick="toggleSearchSettings()" title="تنظیمات جستجو">settings</span>
             
-            <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
-                <label class="flex items-center gap-2 mb-3 font-bold text-sm text-indigo-900 cursor-pointer">
-                    <input type="checkbox" id="searchData" {% if 'data' in search_fields_list %}checked{% endif %} class="text-indigo-600 rounded"> جستجو درون مقادیر فرم‌ساز (داده‌های پویا)
-                </label>
-                <div class="grid grid-cols-2 gap-3">
-                    <div>
-                        <input type="text" id="dataKey" placeholder="نام فیلد (اختیاری)" value="{{ data_key|default:'' }}" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white">
+            <div id="searchSettings" class="hidden absolute top-[calc(100%+0.5rem)] left-0 bg-white border border-gray-300 rounded-lg shadow-lg p-4 z-50 w-full max-w-md h-[400px] overflow-y-auto">
+                <h4 class="text-sm font-semibold text-gray-700 mb-2">تنظیمات جستجو</h4>
+                <div class="border-t border-gray-200 pt-3">
+                    <h5 class="text-sm font-medium text-gray-800 mb-2">فیلترهای اختصاصی</h5>
+                    <div class="mb-3">
+                        <label for="eventFilter" class="block text-sm font-medium text-gray-700 mb-1">رویداد</label>
+                        <select id="eventFilter" name="event" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none bg-gray-50">
+                            <option value="">همه رویدادها</option>
+                            {% for event in all_events %}<option value="{{ event.id }}" {% if event.id|stringformat:"s" == selected_event_id %}selected{% endif %}>{{ event.name }}</option>{% endfor %}
+                        </select>
                     </div>
-                    <div>
-                        <input type="text" id="dataValue" placeholder="مقدار" value="{{ data_value|default:'' }}" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-500 bg-white">
+                    <div class="mb-3">
+                        <label for="pathFilter" class="block text-sm font-medium text-gray-700 mb-1">مسیر</label>
+                        <select id="pathFilter" name="path_id" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none bg-gray-50">
+                            <option value="">همه مسیرها</option>
+                            {% for path in all_paths %}
+                            <option value="{{ path.id }}" {% if path.id|stringformat:"s" == selected_path_id %}selected{% endif %}>{{ path.name }} ({{ path.event.name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="userFilter" class="block text-sm font-medium text-gray-700 mb-1">کاربر</label>
+                        <select id="userFilter" name="user_id" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none bg-gray-50">
+                            <option value="">همه کاربران</option>
+                            {% for user in all_users %}
+                            <option value="{{ user.id }}" {% if user.id|stringformat:"s" == selected_user_id %}selected{% endif %}>{{ user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="statusFilter" class="block text-sm font-medium text-gray-700 mb-1">وضعیت</label>
+                        <select id="statusFilter" name="status" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none bg-gray-50">
+                            <option value="">همه وضعیت‌ها</option>
+                            <option value="valid" {% if selected_status == 'valid' %}selected{% endif %}>صحیح</option>
+                            <option value="invalid" {% if selected_status == 'invalid' %}selected{% endif %}>ناصحیح</option>
+                            <option value="pending" {% if selected_status == 'pending' %}selected{% endif %}>در انتظار</option>
+                            <option value="approved" {% if selected_status == 'approved' %}selected{% endif %}>پذیرفته شده</option>
+                            <option value="rejected" {% if selected_status == 'rejected' %}selected{% endif %}>رد شده</option>
+                        </select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label for="startDateFilter" class="block text-sm font-medium text-gray-700 mb-1">از تاریخ</label>
+                            <input type="date" id="startDateFilter" value="{{ start_date|default:'' }}" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none bg-gray-50">
+                        </div>
+                        <div>
+                            <label for="endDateFilter" class="block text-sm font-medium text-gray-700 mb-1">تا تاریخ</label>
+                            <input type="date" id="endDateFilter" value="{{ end_date|default:'' }}" class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none bg-gray-50">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">چک‌پوینت‌ها</label>
+                        <div class="max-h-48 overflow-y-auto border border-gray-300 rounded-lg p-2 bg-gray-50 space-y-1">
+                            {% for checkpoint in all_checkpoints %}{% ifchanged checkpoint.path.event %}<h5 class="text-xs font-bold text-indigo-600 mt-2 pt-1 border-t border-indigo-100 first:mt-0 first:border-t-0">{{ checkpoint.path.event.name }}</h5>{% endifchanged %}<label class="flex items-center gap-2 text-sm text-gray-700 hover:bg-gray-100 p-1 rounded cursor-pointer"><input type="checkbox" name="cp_ids" value="{{ checkpoint.id }}" {% if checkpoint.id in selected_cp_ids %}checked{% endif %} class="text-indigo-600"> {{ checkpoint.name }}</label>{% endfor %}
+                        </div>
                     </div>
                 </div>
-            </div>
-
-            <div class="border-t border-gray-100 pt-3">
-                <h5 class="text-sm font-bold text-gray-700 mb-3">علاوه بر جستجوی اصلی، در فیلدهای زیر هم بگرد:</h5>
-                <div class="flex flex-wrap gap-4">
-                    <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
-                        <input type="checkbox" id="searchPerson" {% if 'person' in search_fields_list %}checked{% endif %} class="text-indigo-600 rounded"> نام شخص
-                    </label>
-                    <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
-                        <input type="checkbox" id="searchUser" {% if 'user' in search_fields_list %}checked{% endif %} class="text-indigo-600 rounded"> نام کاربر
-                    </label>
-                    <label class="flex items-center gap-2 text-sm text-gray-700 cursor-pointer bg-gray-50 px-3 py-1.5 rounded-lg border border-gray-200">
-                        <input type="checkbox" id="searchDescription" {% if 'description' in search_fields_list %}checked{% endif %} class="text-indigo-600 rounded"> توضیحات
-                    </label>
+                <div class="border-t border-gray-200 mt-3 pt-3">
+                    <h5 class="text-sm font-medium text-gray-800 mb-2">جستجوی متنی در</h5>
+                    <label class="flex items-center gap-2 mb-2 font-vazir text-sm text-gray-700 cursor-pointer"><input type="checkbox" id="searchPerson" {% if 'person' in search_fields_list %}checked{% endif %} class="text-indigo-600"> شخص</label>
+                    <label class="flex items-center gap-2 mb-2 font-vazir text-sm text-gray-700 cursor-pointer"><input type="checkbox" id="searchUser" {% if 'user' in search_fields_list %}checked{% endif %} class="text-indigo-600"> کاربر</label>
+                    <label class="flex items-center gap-2 mb-2 font-vazir text-sm text-gray-700 cursor-pointer"><input type="checkbox" id="searchDescription" {% if 'description' in search_fields_list %}checked{% endif %} class="text-indigo-600"> توضیحات</label>
+                </div>
+                <div class="flex mt-2 flex-col rounded-lg border border-gray-300 p-3">
+                    <label class="flex items-center gap-2 mb-2 font-vazir text-sm text-gray-700 cursor-pointer"><input type="checkbox" id="searchData" {% if 'data' in search_fields_list %}checked{% endif %} class="text-indigo-600"> جستجو در متادیتا</label>
+                    <div class="mt-2"><label class="mb-1 block text-sm text-gray-700 font-vazir">کلید متادیتا</label><input type="text" id="dataKey" placeholder="مثال: سن" value="{{ data_key|default:'' }}" class="w-full p-2 border border-gray-300 rounded-lg font-vazir text-sm focus:outline-none bg-gray-50"></div>
+                    <div class="mt-2"><label class="mb-1 block text-sm text-gray-700 font-vazir">مقدار</label><input type="text" id="dataValue" placeholder="مثال: ۲۳" value="{{ data_value|default:'' }}" class="w-full p-2 border border-gray-300 rounded-lg font-vazir text-sm focus:outline-none bg-gray-50"></div>
+                </div>
+                <div class="flex mt-4 justify-end gap-2 border-t border-gray-200 pt-3">
+                    <button type="button" onclick="clearFilters()" class="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded transition font-bold">پاک کردن</button>
+                    <button type="button" onclick="triggerSearch()" class="px-4 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded transition font-bold">اعمال فیلترها</button>
                 </div>
             </div>
         </div>
-    </div>
-
-    <div class="mt-8 pt-4 border-t border-gray-100 flex justify-end gap-3 bg-white">
-        <button type="button" onclick="clearFilters()" class="px-5 py-2.5 text-sm font-bold text-gray-600 bg-gray-100 border border-gray-200 rounded-lg hover:bg-gray-200 transition">پاک کردن همه</button>
-        <button type="button" onclick="triggerSearch()" class="px-6 py-2.5 text-sm font-bold text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition shadow-md flex items-center gap-2">
-            <span class="material-icons text-sm">filter_alt</span>
-            اعمال فیلترها
-        </button>
     </div>
 </div>
 
@@ -255,6 +208,9 @@ function buildUrlParams() {
     
     const eventId = document.getElementById('eventFilter').value;
     if (eventId) params.append('event_id', eventId);
+    
+    const pathId = document.getElementById('pathFilter').value;
+    if (pathId) params.append('path_id', pathId);
     
     document.querySelectorAll('input[name="cp_ids"]:checked').forEach(cb => { params.append('cp_ids', cb.value); });
     
