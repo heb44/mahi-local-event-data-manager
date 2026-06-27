@@ -89,12 +89,11 @@
     </div>
     <!-- Bottom Row: Subtitle Info -->
     <p class="text-sm text-gray-500 mt-1">
-      <a href="{% url 'events:checkpoints' %}" class="hover:underline text-indigo-600">لیست چک‌پوینت‌ها</a>
+      <a href="{% url 'events:checkpoints' %}" class="hover:underline text-indigo-600">چک‌پوینت‌ها</a>
       <span class="px-1 text-gray-600">/</span>
       <a href="{% url 'events:path_detail' checkpoint.path.id %}" class="hover:underline text-indigo-600">مسیر مرتبط:
         {{checkpoint.path.name}}</a>
       <span class="px-1 text-gray-600">|</span> شناسه چک‌پوینت: {{ checkpoint.id }}
-      <span class="px-1 text-gray-600">|</span> اپراتور: {{checkpoint.user.username|default:"تعیین نشده"}}
     </p>
   </div>
 </header>

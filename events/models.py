@@ -109,6 +109,14 @@ class Event(BaseSafeDeleteModel):
             models.Index(fields=['is_active']),
             models.Index(fields=['created_at']),
         ]
+    
+        constraints = [
+            models.UniqueConstraint(
+                fields=['is_active'],
+                condition=models.Q(is_active=True),
+                name='unique_single_active_event'
+            )
+    ]
 
 
 class PersonEventMetadata(BaseSafeDeleteModel):
@@ -240,7 +248,7 @@ class CheckpointSchema(BaseSafeDeleteModel):
     can_fill = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.event_schema.column_name} @ {self.checkpoint.name}"
+        return f"{self.event_schema.column_name} @ {checkpoint.name}"
 
     class Meta:
         constraints = [
