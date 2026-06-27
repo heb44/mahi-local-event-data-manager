@@ -66,6 +66,37 @@
         .pb-safe {
             padding-bottom: env(safe-area-inset-bottom, 0px);
         }
+
+        /* Override any local CSS tooltips to use the global viewport-relative one */
+        .tooltip::after, [data-tooltip]::after, .tooltip::before, [data-tooltip]::before {
+            display: none !important;
+            content: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+        }
+
+        #global-tooltip {
+            position: fixed;
+            background-color: #1f2937; /* Gray 800 */
+            color: #ffffff;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 500;
+            font-family: Vazirmatn, Vazir, sans-serif;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            pointer-events: none;
+            z-index: 99999;
+            max-width: 250px;
+            white-space: pre-wrap;
+            text-align: right;
+            direction: rtl;
+            opacity: 0;
+            transition: opacity 0.15s ease-in-out;
+        }
+        #global-tooltip.show {
+            opacity: 1;
+        }
     </style>
 <body class="bg-gray-100 flex flex-col min-h-screen">
     <!-- Top Mobile Navigation Bar -->
@@ -334,29 +365,77 @@
                 sidebarBackdrop.addEventListener('click', toggleSidebar);
             }
 
-            // Convert native titles to custom tooltips
-            document.querySelectorAll('[title]').forEach(el => {
-                if (el.classList.contains('truncate')) return;
-                const titleText = el.getAttribute('title');
-                if (titleText && titleText.trim() !== '') {
-                    el.setAttribute('data-tooltip', titleText);
-                    el.removeAttribute('title');
-                    el.classList.add('tooltip');
+            // Setup global tooltip element
+            const tooltipEl = document.createElement('div');
+            tooltipEl.id = 'global-tooltip';
+            document.body.appendChild(tooltipEl);
+
+            function showTooltip(target) {
+                const text = target.getAttribute('data-tooltip') || target.getAttribute('title');
+                if (!text || text.trim() === '') return;
+
+                if (target.hasAttribute('title')) {
+                    target.setAttribute('data-tooltip', target.getAttribute('title'));
+                    target.removeAttribute('title');
+                }
+
+                tooltipEl.textContent = text;
+                tooltipEl.classList.add('show');
+
+                const rect = target.getBoundingClientRect();
+                
+                // Calculate position above target, centered
+                let top = rect.top - tooltipEl.offsetHeight - 8;
+                let left = rect.left + (rect.width / 2) - (tooltipEl.offsetWidth / 2);
+
+                // Boundary checks
+                if (left < 8) left = 8;
+                if (left + tooltipEl.offsetWidth > window.innerWidth - 8) {
+                    left = window.innerWidth - tooltipEl.offsetWidth - 8;
+                }
+                if (top < 8) {
+                    top = rect.bottom + 8; // Place below if no space above
+                }
+
+                tooltipEl.style.top = `${top}px`;
+                tooltipEl.style.left = `${left}px`;
+            }
+
+            function hideTooltip() {
+                tooltipEl.classList.remove('show');
+            }
+
+            // Mouse events for desktop hover
+            document.addEventListener('mouseover', (e) => {
+                const target = e.target.closest('.tooltip, [data-tooltip], [title]');
+                if (target && !target.classList.contains('truncate')) {
+                    showTooltip(target);
                 }
             });
 
-            // Tap-to-toggle tooltip handler
-            document.addEventListener('click', (e) => {
-                const tooltipEl = e.target.closest('.tooltip');
-                document.querySelectorAll('.tooltip.active-tooltip').forEach(el => {
-                    if (el !== tooltipEl) {
-                        el.classList.remove('active-tooltip');
-                    }
-                });
-                if (tooltipEl) {
-                    tooltipEl.classList.toggle('active-tooltip');
+            document.addEventListener('mouseout', (e) => {
+                const target = e.target.closest('.tooltip, [data-tooltip], [title]');
+                if (target) {
+                    hideTooltip();
                 }
             });
+
+            // Tap/click events for mobile
+            document.addEventListener('click', (e) => {
+                const target = e.target.closest('.tooltip, [data-tooltip], [title]');
+                if (target && !target.classList.contains('truncate')) {
+                    if (tooltipEl.classList.contains('show')) {
+                        hideTooltip();
+                    } else {
+                        showTooltip(target);
+                    }
+                } else {
+                    hideTooltip();
+                }
+            });
+
+            window.addEventListener('scroll', hideTooltip, { passive: true });
+            window.addEventListener('resize', hideTooltip, { passive: true });
 
             // Tap to horizontally scroll truncated elements
             document.addEventListener('click', (e) => {

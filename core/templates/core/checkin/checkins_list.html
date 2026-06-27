@@ -30,7 +30,7 @@
             </select>
             <button onclick="triggerSort()" class="bg-indigo-600 text-white rounded-lg p-2 hover:bg-indigo-700 transition w-[15%] material-icons">sort_by_alpha</button>
         </div>
-        <div class="relative w-full sm:max-w-[400px]">
+        <div class="relative w-full sm:max-w-[400px]" x-data>
             <input type="text" id="searchInput" placeholder="جستجو در متن..." value="{{ search_query|default:'' }}"
                 class="w-full p-3 pl-10 pr-10 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:border-indigo-600 focus:ring-2 focus:ring-indigo-600/20 font-vazir">
             <span class="material-icons absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 cursor-pointer hover:text-indigo-600" onclick="triggerSearch()">search</span>

@@ -4,19 +4,12 @@
 
 {% block content %}
 <!-- Page Header matching project standard -->
-<div class="flex justify-between items-center mb-6 gap-2 min-w-0">
-    <div>
-        <h2 class="text-lg sm:text-2xl font-bold text-gray-900 truncate" title="گزارش‌ساز پویا">گزارش‌ساز پویا</h2>
-    </div>
-</div>
-
-<div class="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4 mb-4" x-data>
-    <div class="flex gap-2 items-center w-full lg:w-auto">
-        <button @click="$dispatch('open-add-modal')" class="bg-indigo-600 text-white rounded-lg px-4 py-2 hover:bg-indigo-700 transition flex items-center justify-center gap-2 w-full lg:w-auto shadow-sm text-sm font-bold">
-            <span class="material-icons text-sm">add_chart</span>
-            افزودن نمودار جدید
-        </button>
-    </div>
+<div class="flex justify-between items-center mb-6 gap-2 min-w-0" x-data>
+    <h2 class="text-lg sm:text-2xl font-bold text-gray-800 truncate" title="گزارش‌ساز پویا">گزارش‌ساز پویا</h2>
+    <button @click="$dispatch('open-add-modal')" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl shadow transition shrink-0 text-sm font-bold">
+        <span class="material-icons">add_chart</span>
+        <span class="hidden sm:inline">افزودن نمودار جدید</span>
+    </button>
 </div>
 
 <div class="flex flex-col lg:flex-row gap-6 items-start" x-data="reportBuilder()" x-init="initCharts()">
