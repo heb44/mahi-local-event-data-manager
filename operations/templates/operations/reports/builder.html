@@ -1,0 +1,349 @@
+{% extends 'core/base.html' %}
+{% block title %}گزارش‌ساز پویا{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="flex flex-col md:flex-row gap-6" x-data="reportBuilder()">
+    <!-- Filters Sidebar -->
+    <div class="w-full md:w-1/4 bg-white rounded-xl shadow-sm border border-gray-200 p-5 h-fit md:sticky md:top-24">
+        <h3 class="text-lg font-bold text-gray-800 mb-4 border-b border-gray-100 pb-2">فیلترهای گزارش</h3>
+        
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">رویداد</label>
+                <select x-model="filters.event_id" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">همه رویدادها</option>
+                    {% for event in all_events %}
+                    <option value="{{ event.id }}">{{ event.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">کاربر (اپراتور)</label>
+                <select x-model="filters.user_id" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">همه کاربران</option>
+                    {% for user in all_users %}
+                    <option value="{{ user.id }}">{{ user.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">وضعیت</label>
+                <select x-model="filters.status" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <option value="">همه وضعیت‌ها</option>
+                    <option value="valid">صحیح</option>
+                    <option value="invalid">ناصحیح</option>
+                    <option value="pending">در انتظار</option>
+                    <option value="approved">پذیرفته شده</option>
+                    <option value="rejected">رد شده</option>
+                </select>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">از تاریخ</label>
+                <input type="date" x-model="filters.start_date" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-bold text-gray-700 mb-1">تا تاریخ</label>
+                <input type="date" x-model="filters.end_date" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            
+            <button @click="refreshAllCharts()" class="w-full bg-indigo-600 text-white rounded-lg p-3 font-bold hover:bg-indigo-700 transition flex justify-center items-center gap-2 shadow-md">
+                <span class="material-icons text-sm">refresh</span>
+                بروزرسانی داده‌ها
+            </button>
+        </div>
+    </div>
+    
+    <!-- Main Content -->
+    <div class="w-full md:w-3/4">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">گزارش‌ساز پویا (BI Studio)</h2>
+                <p class="text-gray-500 text-sm mt-1">نمودارهای دلخواه خود را اضافه کنید، فیلترها را تنظیم کرده و تحلیل کنید.</p>
+            </div>
+            <button @click="showAddModal = true" class="bg-emerald-500 text-white px-4 py-2.5 rounded-lg font-bold hover:bg-emerald-600 transition flex items-center gap-2 shadow-sm">
+                <span class="material-icons">add_chart</span>
+                افزودن نمودار
+            </button>
+        </div>
+        
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <template x-for="(chart, index) in charts" :key="chart.id">
+                <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative">
+                    <button @click="removeChart(index)" class="absolute top-3 left-3 text-gray-400 hover:text-red-500 transition">
+                        <span class="material-icons text-sm">close</span>
+                    </button>
+                    <h4 class="font-bold text-gray-800 mb-4 text-center border-b border-gray-100 pb-2" x-text="chart.title"></h4>
+                    <div class="relative h-64 w-full flex justify-center items-center">
+                        <div x-show="chart.loading" class="absolute inset-0 flex justify-center items-center bg-white z-10 rounded-lg">
+                            <span class="material-icons animate-spin text-indigo-600 text-4xl">autorenew</span>
+                        </div>
+                        <canvas :id="'chart-' + chart.id"></canvas>
+                        <div x-show="!chart.loading && chart.empty" class="absolute inset-0 flex justify-center items-center bg-gray-50 rounded-lg">
+                            <div class="text-center text-gray-400">
+                                <span class="material-icons text-4xl mb-2">sentiment_dissatisfied</span>
+                                <p class="text-sm font-bold">داده‌ای یافت نشد</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </template>
+            
+            <div x-show="charts.length === 0" class="col-span-1 lg:col-span-2 bg-indigo-50/50 border-2 border-dashed border-indigo-200 rounded-xl p-12 text-center">
+                <span class="material-icons text-indigo-300 text-6xl mb-4">analytics</span>
+                <h3 class="text-lg font-bold text-indigo-900 mb-2">هنوز هیچ نموداری ندارید</h3>
+                <p class="text-indigo-600/70 mb-4">برای شروع تحلیل، نمودارهای مورد نیاز خود را اضافه کنید.</p>
+                <button @click="showAddModal = true" class="bg-white border border-indigo-200 text-indigo-700 px-6 py-2 rounded-lg font-bold hover:bg-indigo-50 transition shadow-sm">
+                    افزودن اولین نمودار
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Modal -->
+    <div x-show="showAddModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex justify-center items-center p-4" style="display: none;" x-transition>
+        <div @click.away="showAddModal = false" class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 overflow-hidden">
+            <h3 class="text-xl font-bold text-gray-800 mb-5 border-b border-gray-100 pb-3 flex justify-between">
+                <span>تنظیمات نمودار جدید</span>
+                <span @click="showAddModal = false" class="material-icons text-gray-400 cursor-pointer hover:text-red-500">close</span>
+            </h3>
+            
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">نوع فیلد اطلاعاتی</label>
+                    <select x-model="newChart.fieldType" class="w-full p-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-gray-50">
+                        <option value="static">فیلدهای سیستمی (پایه)</option>
+                        <option value="dynamic">فیلدهای فرم‌ساز (داده‌ساختارها)</option>
+                    </select>
+                </div>
+                
+                <div x-show="newChart.fieldType === 'static'" x-transition>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">انتخاب فیلد</label>
+                    <select x-model="newChart.fieldKeyStatic" class="w-full p-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="status">وضعیت پذیرش/رد</option>
+                        <option value="checkpoint">توزیع بین چک‌پوینت‌ها</option>
+                        <option value="user">عملکرد اپراتورها</option>
+                        <option value="event">توزیع بین رویدادها</option>
+                    </select>
+                </div>
+                
+                <div x-show="newChart.fieldType === 'dynamic'" x-transition>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">انتخاب فیلد فرم‌ساز</label>
+                    <select x-model="newChart.fieldKeyDynamic" class="w-full p-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        {% for schema in all_schemas %}
+                        <option value="{{ schema.id }}">[{{ schema.event.name }}] - {{ schema.column_name }}</option>
+                        {% empty %}
+                        <option value="">هیچ فیلد پویایی تعریف نشده است</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-2">نوع نمودار</label>
+                    <div class="grid grid-cols-3 gap-3">
+                        <label class="border rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer transition" :class="newChart.type === 'pie' ? 'border-indigo-500 bg-indigo-50/50 text-indigo-700 shadow-inner' : 'border-gray-200 hover:bg-gray-50'">
+                            <input type="radio" x-model="newChart.type" value="pie" class="hidden">
+                            <span class="material-icons text-2xl">pie_chart</span>
+                            <span class="text-xs font-bold">دایره‌ای</span>
+                        </label>
+                        <label class="border rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer transition" :class="newChart.type === 'doughnut' ? 'border-indigo-500 bg-indigo-50/50 text-indigo-700 shadow-inner' : 'border-gray-200 hover:bg-gray-50'">
+                            <input type="radio" x-model="newChart.type" value="doughnut" class="hidden">
+                            <span class="material-icons text-2xl">donut_large</span>
+                            <span class="text-xs font-bold">دونات</span>
+                        </label>
+                        <label class="border rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer transition" :class="newChart.type === 'bar' ? 'border-indigo-500 bg-indigo-50/50 text-indigo-700 shadow-inner' : 'border-gray-200 hover:bg-gray-50'">
+                            <input type="radio" x-model="newChart.type" value="bar" class="hidden">
+                            <span class="material-icons text-2xl">bar_chart</span>
+                            <span class="text-xs font-bold">میله‌ای</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-8 flex justify-end gap-3 pt-4 border-t border-gray-100">
+                <button @click="showAddModal = false" class="px-5 py-2.5 text-sm text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg font-bold transition">انصراف</button>
+                <button @click="addChart()" class="px-5 py-2.5 text-sm text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg font-bold transition shadow-md">افزودن به داشبورد</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('alpine:init', () => {
+    Alpine.data('reportBuilder', () => ({
+        filters: {
+            event_id: '',
+            user_id: '',
+            status: '',
+            start_date: '',
+            end_date: ''
+        },
+        charts: [],
+        showAddModal: false,
+        chartInstances: {},
+        newChart: {
+            fieldType: 'static',
+            fieldKeyStatic: 'status',
+            fieldKeyDynamic: '{{ all_schemas.0.id|default:"" }}',
+            type: 'pie'
+        },
+        
+        getFiltersQueryString() {
+            const params = new URLSearchParams();
+            if(this.filters.event_id) params.append('event_id', this.filters.event_id);
+            if(this.filters.user_id) params.append('user_id', this.filters.user_id);
+            if(this.filters.status) params.append('status', this.filters.status);
+            if(this.filters.start_date) params.append('start_date', this.filters.start_date);
+            if(this.filters.end_date) params.append('end_date', this.filters.end_date);
+            return params.toString();
+        },
+        
+        addChart() {
+            if(this.newChart.fieldType === 'dynamic' && !this.newChart.fieldKeyDynamic) {
+                alert('هیچ فیلد پویایی برای انتخاب وجود ندارد.');
+                return;
+            }
+
+            const id = Date.now().toString();
+            const key = this.newChart.fieldType === 'static' ? this.newChart.fieldKeyStatic : this.newChart.fieldKeyDynamic;
+            
+            let title = 'نمودار';
+            if(this.newChart.fieldType === 'static'){
+                const titles = {
+                    'status': 'توزیع وضعیت اعتبارسنجی',
+                    'checkpoint': 'ترافیک چک‌پوینت‌ها',
+                    'user': 'عملکرد اپراتورها',
+                    'event': 'توزیع رویدادها'
+                };
+                title = titles[key];
+            } else {
+                const select = document.querySelector('select[x-model="newChart.fieldKeyDynamic"]');
+                if(select && select.options[select.selectedIndex]){
+                    title = 'تحلیل ' + select.options[select.selectedIndex].text.split(' - ')[1];
+                }
+            }
+            
+            const chartData = {
+                id: id,
+                title: title,
+                fieldType: this.newChart.fieldType,
+                fieldKey: key,
+                type: this.newChart.type,
+                loading: true,
+                empty: false
+            };
+            
+            this.charts.push(chartData);
+            this.showAddModal = false;
+            
+            this.$nextTick(() => {
+                this.loadChartData(chartData);
+            });
+        },
+        
+        removeChart(index) {
+            const chart = this.charts[index];
+            if(this.chartInstances[chart.id]) {
+                this.chartInstances[chart.id].destroy();
+                delete this.chartInstances[chart.id];
+            }
+            this.charts.splice(index, 1);
+        },
+        
+        refreshAllCharts() {
+            this.charts.forEach(chart => {
+                this.loadChartData(chart);
+            });
+        },
+        
+        async loadChartData(chart) {
+            chart.loading = true;
+            chart.empty = false;
+            
+            const qs = this.getFiltersQueryString();
+            const url = `{% url 'operations:api_report_aggregate' %}?${qs}&field_type=${chart.fieldType}&field_key=${chart.fieldKey}`;
+            
+            try {
+                const response = await fetch(url);
+                const result = await response.json();
+                
+                chart.loading = false;
+                
+                if(!result.data || result.data.length === 0) {
+                    chart.empty = true;
+                    if(this.chartInstances[chart.id]) {
+                        this.chartInstances[chart.id].destroy();
+                        delete this.chartInstances[chart.id];
+                    }
+                    return;
+                }
+                
+                this.renderChart(chart, result.data);
+            } catch (err) {
+                console.error(err);
+                chart.loading = false;
+            }
+        },
+        
+        renderChart(chart, data) {
+            const canvas = document.getElementById('chart-' + chart.id);
+            if(!canvas) return;
+            
+            if(this.chartInstances[chart.id]) {
+                this.chartInstances[chart.id].destroy();
+            }
+            
+            const labels = data.map(d => d.name);
+            const values = data.map(d => d.count);
+            
+            const baseColors = [
+                '#6366f1', '#ec4899', '#14b8a6', '#f59e0b', '#8b5cf6',
+                '#ef4444', '#10b981', '#3b82f6', '#f97316', '#06b6d4'
+            ];
+            const bgColors = values.map((_, i) => baseColors[i % baseColors.length]);
+            
+            const config = {
+                type: chart.type,
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'تعداد',
+                        data: values,
+                        backgroundColor: bgColors,
+                        borderWidth: 0,
+                        borderRadius: chart.type === 'bar' ? 4 : 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: chart.type !== 'bar',
+                            position: 'bottom',
+                            labels: { font: { family: 'Vazirmatn' } }
+                        }
+                    },
+                    scales: chart.type === 'bar' ? {
+                        y: { beginAtZero: true, grid: { color: '#f3f4f6' } },
+                        x: { grid: { display: false } }
+                    } : {}
+                }
+            };
+            
+            this.chartInstances[chart.id] = new Chart(canvas, config);
+        }
+    }));
+});
+</script>
+{% endblock %}

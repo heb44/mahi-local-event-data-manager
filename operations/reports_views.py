@@ -10,6 +10,8 @@ import json
 from .models import CheckIn, CheckInData
 from events.models import Event, Path, Checkpoint, EventSchema, PersonEventMetadata
 from people.models import Person
+from accounts.models import User
+from django.views.decorators.http import require_GET
 
 @login_required
 def reports_progression(request):
@@ -144,93 +146,82 @@ def reports_compliance(request):
     }
     return render(request, 'operations/reports/compliance.html', context)
 
-@login_required
-def reports_demographics(request):
-    event_id = request.GET.get('event_id')
-    schema_id = request.GET.get('schema_id')
-    
-    events = Event.objects.all().order_by('-created_at')
-    if not event_id:
-        active_event = Event.objects.filter(is_active=True).first()
-        event_id = active_event.id if active_event else (events.first().id if events.exists() else None)
-        
-    schemas = EventSchema.objects.filter(event_id=event_id, is_active=True).order_by('column_name') if event_id else []
-    
-    if not schema_id and schemas.exists():
-        schema_id = schemas.first().id
-        
-    selected_schema = EventSchema.objects.filter(id=schema_id).first() if schema_id else None
-    
-    aggregation_data = []
-    total_records = 0
-    
-    if selected_schema and event_id:
-        source = selected_schema.metadata_source
-        key = selected_schema.metadata_key
-        
-        if source == 'm':
-            # Query Person.metadata
-            # Get participants of this event
-            persons = Person.objects.filter(events__id=event_id)
-            total_records = persons.count()
-            
-            # Group by JSON key
-            agg = persons.annotate(
-                field_value=KeyTextTransform(key, 'metadata')
-            ).values('field_value').annotate(count=Count('id')).order_by('-count')
-            
-            for item in agg:
-                val = item['field_value'] or 'نامشخص'
-                aggregation_data.append({
-                    'value': val,
-                    'count': item['count'],
-                    'percentage': round((item['count'] / total_records * 100) if total_records > 0 else 0, 1)
-                })
-                
-        elif source == 'pem':
-            # Query PersonEventMetadata
-            pems = PersonEventMetadata.objects.filter(event_id=event_id)
-            total_records = pems.count()
-            
-            agg = pems.annotate(
-                field_value=KeyTextTransform(key, 'data')
-            ).values('field_value').annotate(count=Count('id')).order_by('-count')
-            
-            for item in agg:
-                val = item['field_value'] or 'نامشخص'
-                aggregation_data.append({
-                    'value': val,
-                    'count': item['count'],
-                    'percentage': round((item['count'] / total_records * 100) if total_records > 0 else 0, 1)
-                })
-        else:
-            # Maybe query CheckInData if it's meant to be collected at a checkpoint
-            checkin_data = CheckInData.objects.filter(event_schema_id=schema_id, check_in__is_valid=True)
-            total_records = checkin_data.count()
-            
-            # Since value is a primitive, we group directly
-            agg = checkin_data.values('value').annotate(count=Count('id')).order_by('-count')
-            
-            for item in agg:
-                val = item['value']
-                if val is None or str(val).strip() == '':
-                    val = 'نامشخص'
-                elif isinstance(val, bool):
-                    val = 'بله' if val else 'خیر'
-                aggregation_data.append({
-                    'value': val,
-                    'count': item['count'],
-                    'percentage': round((item['count'] / total_records * 100) if total_records > 0 else 0, 1)
-                })
+from django.http import JsonResponse
+from .services import CheckInFilterService
 
+@login_required
+def report_builder(request):
+    events = Event.objects.all().order_by('-created_at')
+    checkpoints = Checkpoint.objects.select_related('path__event').all()
+    users = User.objects.filter(is_active=True)
+    schemas = EventSchema.objects.filter(is_active=True).select_related('event')
+    
     context = {
         'active_page': 'reports',
-        'active_subpage': 'demographics',
-        'events': events,
-        'selected_event_id': int(event_id) if event_id else None,
-        'schemas': schemas,
-        'selected_schema_id': int(schema_id) if schema_id else None,
-        'aggregation_data': aggregation_data,
-        'total_records': total_records,
+        'active_subpage': 'builder',
+        'all_events': events,
+        'all_checkpoints': checkpoints,
+        'all_users': users,
+        'all_schemas': schemas,
     }
-    return render(request, 'operations/reports/demographics.html', context)
+    return render(request, 'operations/reports/builder.html', context)
+
+@login_required
+@require_GET
+def api_report_aggregate(request):
+    base_qs = CheckIn.objects.select_related(
+        'person', 'checkpoint', 'checkpoint__path', 'checkpoint__path__event', 'user'
+    )
+    params = CheckInFilterService._extract_params(request)
+    filtered_qs = CheckInFilterService._apply_filters(base_qs, params)
+    
+    field_type = request.GET.get('field_type', 'static')
+    field_key = request.GET.get('field_key', '')
+    
+    total_count = filtered_qs.count()
+    data = []
+    
+    if total_count > 0:
+        if field_type == 'static':
+            if field_key == 'checkpoint':
+                agg = filtered_qs.values(name=F('checkpoint__name')).annotate(count=Count('id')).order_by('-count')
+                data = list(agg)
+            elif field_key == 'user':
+                agg = filtered_qs.values(name=F('user__username')).annotate(count=Count('id')).order_by('-count')
+                data = list(agg)
+            elif field_key == 'event':
+                agg = filtered_qs.values(name=F('checkpoint__path__event__name')).annotate(count=Count('id')).order_by('-count')
+                data = list(agg)
+            elif field_key == 'status':
+                invalid = filtered_qs.filter(is_valid=False).count()
+                approved = filtered_qs.filter(is_valid=True, is_approved=True).count()
+                rejected = filtered_qs.filter(is_valid=True, is_approved=False, pending=False).count()
+                pending = filtered_qs.filter(is_valid=True, pending=True).count()
+                
+                status_raw = [
+                    {'name': 'پذیرفته شده', 'count': approved},
+                    {'name': 'نامعتبر', 'count': invalid},
+                    {'name': 'رد شده', 'count': rejected},
+                    {'name': 'در انتظار', 'count': pending},
+                ]
+                data = [s for s in status_raw if s['count'] > 0]
+        
+        elif field_type == 'dynamic' and field_key.isdigit():
+            schema_id = int(field_key)
+            agg = filtered_qs.filter(data__event_schema_id=schema_id).values(name=F('data__value')).annotate(count=Count('id')).order_by('-count')
+            for item in agg:
+                if item['name'] is None or str(item['name']).strip() == '':
+                    item['name'] = 'نامشخص'
+                elif isinstance(item['name'], bool):
+                    item['name'] = 'بله' if item['name'] else 'خیر'
+                data.append(item)
+                
+        # Calculate percentages
+        for d in data:
+            d['name'] = d.get('name') or 'نامشخص'
+            d['percentage'] = round((d['count'] / total_count) * 100, 1)
+            
+    return JsonResponse({
+        'total': total_count,
+        'data': data
+    })

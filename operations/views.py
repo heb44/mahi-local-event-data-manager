@@ -94,52 +94,11 @@ def checkins_list(request: HttpRequest) -> HttpResponse:
         )
     )
 
-    from .services import CheckInFilterService
-    params = CheckInFilterService._extract_params(request)
-    filtered_qs = CheckInFilterService._apply_filters(base_qs, params)
-
     context = filter_sort_paginate_checkins(request, base_qs, page_size=20)
     context['active_page'] = 'checkins'
     context['all_events'] = Event.objects.order_by('name')
     context['all_checkpoints'] = Checkpoint.objects.select_related('path__event').order_by('path__event__name', 'name')
     context['all_users'] = User.objects.filter(is_active=True).order_by('username')
-    
-    total_count = filtered_qs.count()
-    context['total_filtered_count'] = total_count
-    
-    if total_count > 0:
-        event_dist = list(filtered_qs.values(name=F('checkpoint__path__event__name')).annotate(count=Count('id')).order_by('-count'))
-        for ed in event_dist:
-            ed['percentage'] = round((ed['count'] / total_count) * 100, 1)
-
-        checkpoint_dist = list(filtered_qs.values(name=F('checkpoint__name')).annotate(count=Count('id')).order_by('-count'))
-        for cd in checkpoint_dist:
-            cd['percentage'] = round((cd['count'] / total_count) * 100, 1)
-
-        user_dist = list(filtered_qs.values(name=F('user__username')).annotate(count=Count('id')).order_by('-count'))
-        for ud in user_dist:
-            ud['percentage'] = round((ud['count'] / total_count) * 100, 1)
-
-        invalid_count = filtered_qs.filter(is_valid=False).count()
-        approved_count = filtered_qs.filter(is_valid=True, is_approved=True).count()
-        rejected_count = filtered_qs.filter(is_valid=True, is_approved=False, pending=False).count()
-        pending_count = filtered_qs.filter(is_valid=True, pending=True).count()
-        
-        status_dist = [
-            {'name': 'پذیرفته شده', 'count': approved_count, 'color': '#22c55e', 'percentage': round((approved_count/total_count)*100, 1)},
-            {'name': 'نامعتبر', 'count': invalid_count, 'color': '#ef4444', 'percentage': round((invalid_count/total_count)*100, 1)},
-            {'name': 'رد شده', 'count': rejected_count, 'color': '#f97316', 'percentage': round((rejected_count/total_count)*100, 1)},
-            {'name': 'در انتظار', 'count': pending_count, 'color': '#eab308', 'percentage': round((pending_count/total_count)*100, 1)},
-        ]
-        status_dist = [s for s in status_dist if s['count'] > 0]
-        
-        context['aggregations'] = {
-            'events': event_dist,
-            'checkpoints': checkpoint_dist,
-            'users': user_dist,
-            'status': status_dist,
-        }
-
     return render(request, 'core/checkin/checkins_list.html', context)
 
 

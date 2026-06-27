@@ -18,5 +18,6 @@ urlpatterns = [
 
     path('reports/progression/', reports_views.reports_progression, name='reports_progression'),
     path('reports/compliance/', reports_views.reports_compliance, name='reports_compliance'),
-    path('reports/demographics/', reports_views.reports_demographics, name='reports_demographics'),
+    path('reports/builder/', reports_views.report_builder, name='report_builder'),
+    path('api/reports/aggregate/', reports_views.api_report_aggregate, name='api_report_aggregate'),
 ]
