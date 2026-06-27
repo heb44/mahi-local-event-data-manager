@@ -41,20 +41,33 @@
   }
   .latest-events {
     position: relative;
-    display: flex;
-    align-items: center;
     overflow: hidden;
-    white-space: nowrap;
     height: 24px;
   }
-  .latest-events.long {
-    mask-image: linear-gradient(to left, transparent, black 10%, black 90%, transparent);
-    -webkit-mask-image: linear-gradient(to left, transparent, black 10%, black 90%, transparent);
-  }
   .latest-events .text {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
     font-size: 0.85rem;
     color: #374151;
-    transition: transform 0.3s;
+    transition: opacity 0.5s ease, transform 0.5s ease;
+    opacity: 0;
+    transform: translateY(100%);
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .latest-events .text.active {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+  .latest-events .text.exit {
+    opacity: 0;
+    transform: translateY(-100%);
   }
   
   .blink-dot {
@@ -65,19 +78,9 @@
     margin-left: 10px;
     animation: blink 1s infinite;
   }
-  @keyframes scroll {
-    0% { transform: translateX(100%); }
-    100% { transform: translateX(-100%); }
-  }
   @keyframes blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0; }
-  }
-  .latest-events .text {
-    animation: scroll 15s linear infinite;
-  }
-  .latest-events:hover .text {
-    animation-play-state: paused;
   }
   #map { height: 100%; width: 100%; }
   .custom-marker {
@@ -142,7 +145,11 @@
   <div class="flex items-center h-6">
     <span class="blink-dot"></span>
     <div id="latest-events" class="latest-events flex-1">
-      <span class="text">{{ latest_events_text|default:"هیچ رویداد جدیدی ثبت نشده است" }}</span>
+      {% for event in latest_events %}
+        <span class="text">{{ event }}</span>
+      {% empty %}
+        <span class="text">هیچ رویداد جدیدی ثبت نشده است</span>
+      {% endfor %}
     </div>
   </div>
 </div>
@@ -331,11 +338,32 @@
       initializeMap();
     }
 
-    // Control Latest Events Animation
-    const latestEvents = document.getElementById('latest-events');
-    const textElement = latestEvents.querySelector('.text');
-    if (textElement.scrollWidth > latestEvents.offsetWidth) {
-      latestEvents.classList.add('long');
+    // Rotate Latest Events
+    const eventItems = document.querySelectorAll('#latest-events .text');
+    if (eventItems.length > 1) {
+      let currentIndex = 0;
+      eventItems[currentIndex].classList.add('active');
+
+      setInterval(() => {
+        const currentItem = eventItems[currentIndex];
+        currentIndex = (currentIndex + 1) % eventItems.length;
+        const nextItem = eventItems[currentIndex];
+
+        // Exit current
+        currentItem.classList.remove('active');
+        currentItem.classList.add('exit');
+
+        // Enter next
+        nextItem.classList.remove('exit');
+        nextItem.classList.add('active');
+
+        // Cleanup exit class after transition completes (500ms)
+        setTimeout(() => {
+          currentItem.classList.remove('exit');
+        }, 500);
+      }, 3000);
+    } else if (eventItems.length === 1) {
+      eventItems[0].classList.add('active');
     }
   });
 
