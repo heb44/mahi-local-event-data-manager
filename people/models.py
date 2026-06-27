@@ -1,5 +1,4 @@
 from django.db import models
-from django.contrib.postgres.indexes import GinIndex
 from simple_history.models import HistoricalRecords
 from safedelete.models import SOFT_DELETE_CASCADE
 
@@ -23,5 +22,4 @@ class Person(BaseSafeDeleteModel):
         indexes = [
             models.Index(fields=['name', 'last_name', 'phone_number']),
             models.Index(fields=['deleted'], name='people_pers_deleted_4b6f7d_idx'),
-            GinIndex(fields=['metadata'])
         ]

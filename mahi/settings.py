@@ -66,14 +66,11 @@ TEMPLATES = [
     },
 ]
 
-database_url = os.getenv('DATABASE_URL', f"sqlite:///{BASE_DIR / 'db.sqlite3'}")
-is_sqlite = 'sqlite' in database_url
-
 DATABASES = {
-    'default': dj_database_url.config(
-        default=database_url,
-        conn_max_age=0 if is_sqlite else 600
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
 
 AUTH_USER_MODEL = 'accounts.User'
