@@ -283,12 +283,25 @@ def role_permissions_update_view(request: HttpRequest, pk: int) -> HttpResponse:
 
 @login_required
 def settings_general(request: HttpRequest) -> HttpResponse:
-    user_settings, _ = UserSettings.objects.get_or_create(id=request.user.id, defaults={'user': request.user})
-    form = GeneralSettingsForm(request.POST or None)
+    user_settings, _ = UserSettings.objects.get_or_create(user=request.user)
+    form = GeneralSettingsForm(
+        request.POST or None,
+        initial={
+            'digits_type': 'fa' if user_settings.use_persian_digits else 'en',
+            'event_display_duration': user_settings.dashboard_event_display_duration,
+            'event_count': user_settings.dashboard_event_count,
+        }
+    )
     if request.method == 'POST':
         if form.is_valid():
             user_settings.use_persian_digits = form.cleaned_data['digits_type'] == 'fa'
-            user_settings.save(update_fields=['use_persian_digits'])
+            user_settings.dashboard_event_display_duration = form.cleaned_data['event_display_duration']
+            user_settings.dashboard_event_count = form.cleaned_data['event_count']
+            user_settings.save(update_fields=[
+                'use_persian_digits',
+                'dashboard_event_display_duration',
+                'dashboard_event_count',
+            ])
             messages.success(request, 'تنظیمات با موفقیت ذخیره شد.')
         else:
             messages.error(request, form.errors.as_text())
@@ -296,13 +309,16 @@ def settings_general(request: HttpRequest) -> HttpResponse:
     context = {
         'active_section': 'general',
         'active_page': 'settings',
+        'use_persian_digits': user_settings.use_persian_digits,
+        'dashboard_event_display_duration': user_settings.dashboard_event_display_duration,
+        'dashboard_event_count': user_settings.dashboard_event_count,
     }
     return render(request, 'core/settings/general.html', context=context)
 
 
 @login_required
 def settings_checkin(request: HttpRequest) -> HttpResponse:
-    user_settings, _ = UserSettings.objects.get_or_create(id=request.user.id, defaults={'user': request.user})
+    user_settings, _ = UserSettings.objects.get_or_create(user=request.user)
     if request.method == 'POST':
         form = CheckInSettingsForm(request.POST, instance=user_settings)
         if form.is_valid():

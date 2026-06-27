@@ -109,6 +109,15 @@ class GeneralSettingsForm(forms.Form):
         choices=[('en', 'English'), ('fa', 'Persian')],
         required=False,
     )
+    event_display_duration = forms.IntegerField(
+        min_value=1,
+        required=True,
+    )
+    event_count = forms.IntegerField(
+        min_value=1,
+        max_value=20,
+        required=True,
+    )
 
     def clean_digits_type(self):
         return self.cleaned_data.get('digits_type') or 'en'

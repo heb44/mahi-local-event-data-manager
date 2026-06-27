@@ -24,5 +24,8 @@ class UserSettings(models.Model):
     enable_barcode_scanner = models.BooleanField(default=True)
     enable_audio_feedback = models.BooleanField(default=True)
     
+    dashboard_event_display_duration = models.PositiveIntegerField(default=3)
+    dashboard_event_count = models.PositiveIntegerField(default=5)
+    
     def __str__(self):
         return f"Settings for {self.user.username}"

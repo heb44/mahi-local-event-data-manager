@@ -25,7 +25,9 @@ def dashboard(request: HttpRequest) -> HttpResponse:
     if not active_event:
         active_event = Event.objects.order_by(F('last_stop_time').desc(nulls_last=True)).first()
 
-    latest_checkins = CheckIn.objects.select_related('person', 'checkpoint').order_by('-timestamp')[:5]
+    user_settings, _ = UserSettings.objects.get_or_create(user=request.user)
+    limit = user_settings.dashboard_event_count
+    latest_checkins = CheckIn.objects.select_related('person', 'checkpoint').order_by('-timestamp')[:limit]
 
     stats = {
         'connected_users': User.objects.filter(is_active=True).count(),
@@ -64,6 +66,7 @@ def dashboard(request: HttpRequest) -> HttpResponse:
         'active_page': 'dashboard',
         'active_event': active_event,
         'latest_checkins': latest_checkins,
+        'event_display_duration_ms': user_settings.dashboard_event_display_duration * 1000,
         'stats': stats,
         'active_paths': active_paths,
         'map_paths': map_paths,

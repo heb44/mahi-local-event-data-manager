@@ -33,7 +33,36 @@
         </div>
     </details>
 
-<div class="flex justify-end">
+    <details class="mb-4">
+        <summary class="cursor-pointer p-2 bg-gray-50 border border-gray-300 rounded-md text-gray-800 text-sm font-medium hover:bg-gray-100 open:bg-indigo-100">تنظیمات داشبورد</summary>
+        <div class="p-4 space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">مدت زمان نمایش هر رویداد (ثانیه)</label>
+                <input
+                    type="number"
+                    name="event_display_duration"
+                    value="{{ dashboard_event_display_duration|default:3 }}"
+                    min="1"
+                    class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                    required
+                >
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">تعداد رویدادهای اخیر برای نمایش</label>
+                <input
+                    type="number"
+                    name="event_count"
+                    value="{{ dashboard_event_count|default:5 }}"
+                    min="1"
+                    max="20"
+                    class="w-full p-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600"
+                    required
+                >
+            </div>
+        </div>
+    </details>
+
+    <div class="flex justify-end">
         <button type="submit" class="px-4 py-2 text-md bg-green-600 text-white rounded-lg">ذخیره</button>
     </div>
 </form>

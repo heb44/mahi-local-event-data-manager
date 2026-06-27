@@ -361,7 +361,7 @@
         setTimeout(() => {
           currentItem.classList.remove('exit');
         }, 500);
-      }, 3000);
+      }, {{ event_display_duration_ms|default:3000 }});
     } else if (eventItems.length === 1) {
       eventItems[0].classList.add('current');
     }
