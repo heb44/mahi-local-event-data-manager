@@ -1,6 +1,5 @@
 from typing import Any, List, Optional, Tuple
 
-from django.contrib.postgres.indexes import GinIndex
 from django.db import models, transaction
 from django.db.models import BooleanField, Max, Q, Value
 from django.db.models.functions import Coalesce
@@ -40,41 +39,8 @@ METADATA_SOURCE_CHOICES = [
 
 class EventSchemaManager(SafeDeleteManager):
     def with_user_permissions(self, event, user):
-        checkpoint_filter = Q(
-            cp_schemas__checkpoint__path__event=event,
-            cp_schemas__checkpoint__user=user,
-            cp_schemas__checkpoint__is_active=True,
-        )
-
-        return self.get_queryset().filter(
-            event=event,
-            is_active=True,
-        ).annotate(
-            can_view=Coalesce(
-                Max(
-                    'cp_schemas__can_view',
-                    filter=checkpoint_filter,
-                    output_field=BooleanField(),
-                ),
-                Value(False),
-            ),
-            can_edit=Coalesce(
-                Max(
-                    'cp_schemas__can_edit',
-                    filter=checkpoint_filter,
-                    output_field=BooleanField(),
-                ),
-                Value(False),
-            ),
-            can_fill=Coalesce(
-                Max(
-                    'cp_schemas__can_fill',
-                    filter=checkpoint_filter,
-                    output_field=BooleanField(),
-                ),
-                Value(False),
-            ),
-        ).order_by('column_name')
+        from .services import get_active_event_schemas_with_user_permissions
+        return get_active_event_schemas_with_user_permissions(event, user)
 
 
 class Event(BaseSafeDeleteModel):
@@ -135,7 +101,6 @@ class PersonEventMetadata(BaseSafeDeleteModel):
         indexes = [
             models.Index(fields=['person', 'event']),
             models.Index(fields=['updated_at']),
-            GinIndex(fields=['data']),
         ]
 
 
@@ -159,45 +124,8 @@ class EventSchema(BaseSafeDeleteModel):
     objects = EventSchemaManager()
 
     def get_data(self, person) -> Tuple[Optional[Any], str, str]:
-        """
-        Retrieves data for a person.
-        Note: Access to 'CheckInData' (operations app) has been removed from this method
-        to avoid circular dependency. Only Metadata and Default values are resolved here.
-        Runtime check-in data resolution must be handled by the 'operations' service layer.
-        """
-        messages: List[str] = []
-
-        sources = []
-        if self.metadata_source == METADATA_SOURCE_PEM:
-            sources.append(METADATA_SOURCE_PEM)
-        elif self.metadata_source == METADATA_SOURCE_M:
-            sources.append(METADATA_SOURCE_M)
-        sources.append('default')
-
-        for source_key in sources:
-            raw_value = None
-            if source_key == METADATA_SOURCE_PEM:
-                pem_list = getattr(person, 'event_pems', person.pems.filter(event_id=self.event_id))
-                pem = next((p for p in pem_list), None)
-                if pem:
-                    raw_value = pem.data.get(self.metadata_key)
-            elif source_key == METADATA_SOURCE_M:
-                raw_value = person.metadata.get(self.metadata_key)
-            elif source_key == 'default':
-                raw_value = self.default_value
-
-            if not raw_value or raw_value == '':
-                continue
-
-            is_valid, casted_value = validate_and_cast_value(self.data_type, raw_value)
-            if is_valid:
-                return (casted_value, source_key, ' '.join(messages))
-
-            messages.append(
-                f"Value '{raw_value}' from source '{source_key}' ignored due to type mismatch."
-            )
-
-        return (None, '', ' '.join(messages))
+        from .services import resolve_schema_data
+        return resolve_schema_data(self, person)
 
     def __str__(self):
         return f"{self.column_name} ({self.event.name})"
@@ -248,7 +176,7 @@ class CheckpointSchema(BaseSafeDeleteModel):
     can_fill = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"{self.event_schema.column_name} @ {checkpoint.name}"
+        return f"{self.event_schema.column_name} @ {self.checkpoint.name}"
 
     class Meta:
         constraints = [
